@@ -62,12 +62,28 @@ jobs:
 
       # Trusted Publishing: request a short-lived API key via OIDC.
       # Temp key is valid for 1 hour, so do this immediately before push.
-      - name: NuGet login (OIDC)
+      - name: Debug — show OIDC claims
+        if: steps.version.outputs.is_release == 'true'
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://www.nuget.org" | jq -r .value)
+          PAYLOAD=$(echo -n "$TOKEN" | cut -d. -f2)
+          # base64url decode (add padding)
+          MOD=$(( ${#PAYLOAD} % 4 ))
+          if [ "$MOD" = 2 ]; then PAYLOAD="${PAYLOAD}=="; fi
+          if [ "$MOD" = 3 ]; then PAYLOAD="${PAYLOAD}="; fi
+          echo "$PAYLOAD" | tr '_-' '/+' | base64 -d | jq '{sub, repository, repository_owner, workflow_ref, job_workflow_ref, event_name, ref}'
+
+      - name: NuGet login (OIDC) — hardcoded user for diagnosis
         if: steps.version.outputs.is_release == 'true'
         uses: NuGet/login@v1
         id: nuget-login
         with:
-          user: ${{ secrets.NUGET_USER }}
+          user: VION-IoT
 
       - name: Push to nuget.org
         if: steps.version.outputs.is_release == 'true'
