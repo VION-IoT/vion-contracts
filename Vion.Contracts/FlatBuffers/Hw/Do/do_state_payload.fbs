@@ -1,0 +1,9 @@
+﻿namespace Vion.Contracts.FlatBuffers.Hw.Do;
+
+table DoStatePayload {
+  hardware_block_instance_id:string;
+  endpoint_identifier:string;
+  value:bool;
+}
+
+root_type DoStatePayload;

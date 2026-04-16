@@ -1,0 +1,4 @@
+
+[*.{cs,vb}]
+#### Naming styles ####
+end_of_line = lf

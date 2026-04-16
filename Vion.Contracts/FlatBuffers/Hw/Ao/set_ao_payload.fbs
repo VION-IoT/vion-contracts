@@ -1,0 +1,7 @@
+﻿namespace Vion.Contracts.FlatBuffers.Hw.Ao;
+
+table SetAoPayload {
+  value:double;
+}
+
+root_type SetAoPayload;

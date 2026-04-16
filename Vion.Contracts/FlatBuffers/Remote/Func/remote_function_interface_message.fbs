@@ -1,0 +1,12 @@
+﻿namespace Vion.Contracts.FlatBuffers.Remote.Func;
+
+table RemoteFunctionInterfaceMessage {
+  from_logic_block_id:string;
+  from_interface_identifier:string;
+  to_logic_block_id:string;
+  to_interface_identifier:string;
+  payload_type_full_name:string;
+  payload_data:[ubyte];
+}
+
+root_type RemoteFunctionInterfaceMessage;

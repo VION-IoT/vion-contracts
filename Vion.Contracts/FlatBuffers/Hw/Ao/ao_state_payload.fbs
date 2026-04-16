@@ -1,0 +1,9 @@
+﻿namespace Vion.Contracts.FlatBuffers.Hw.Ao;
+
+table AoStatePayload {
+  hardware_block_instance_id:string;
+  endpoint_identifier:string;
+  value:double;
+}
+
+root_type AoStatePayload;

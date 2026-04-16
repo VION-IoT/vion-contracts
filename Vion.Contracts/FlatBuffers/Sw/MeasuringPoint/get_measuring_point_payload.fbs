@@ -1,0 +1,9 @@
+// Payload for requesting the value of a measuring point
+// All data is provided in the topic and user properties
+
+namespace Vion.Contracts.FlatBuffers.Sw.MeasuringPoint;
+
+table GetMeasuringPointPayload {
+}
+
+root_type GetMeasuringPointPayload;

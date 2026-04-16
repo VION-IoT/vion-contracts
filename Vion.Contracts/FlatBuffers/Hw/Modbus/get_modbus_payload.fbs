@@ -1,0 +1,12 @@
+include "modbus_function_code.fbs";
+
+namespace Vion.Contracts.FlatBuffers.Hw.Modbus;
+
+table GetModbusPayload {
+    function_code:ModbusFunctionCode;
+    unit_identifier:ubyte;
+    starting_address:ushort;
+    quantity:ushort;
+}
+
+root_type GetModbusPayload;

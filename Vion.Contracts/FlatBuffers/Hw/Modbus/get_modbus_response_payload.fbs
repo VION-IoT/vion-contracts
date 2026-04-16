@@ -1,0 +1,11 @@
+include "modbus_response_code.fbs";
+
+namespace Vion.Contracts.FlatBuffers.Hw.Modbus;
+
+table GetModbusResponsePayload {
+    response_code:ModbusResponseCode;
+    error_message:string;
+    data:[ubyte];
+}
+
+root_type GetModbusResponsePayload;

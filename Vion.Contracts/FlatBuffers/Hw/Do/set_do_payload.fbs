@@ -1,0 +1,7 @@
+﻿namespace Vion.Contracts.FlatBuffers.Hw.Do;
+
+table SetDoPayload {
+  value:bool;
+}
+
+root_type SetDoPayload;
