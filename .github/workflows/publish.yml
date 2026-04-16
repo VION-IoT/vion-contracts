@@ -78,12 +78,12 @@ jobs:
           if [ "$MOD" = 3 ]; then PAYLOAD="${PAYLOAD}="; fi
           echo "$PAYLOAD" | tr '_-' '/+' | base64 -d | jq '{sub, repository, repository_owner, workflow_ref, job_workflow_ref, event_name, ref}'
 
-      - name: NuGet login (OIDC) — hardcoded user for diagnosis
+      - name: NuGet login (OIDC) — hardcoded individual user for diagnosis
         if: steps.version.outputs.is_release == 'true'
         uses: NuGet/login@v1
         id: nuget-login
         with:
-          user: VION-IoT
+          user: JonasBertsch
 
       - name: Push to nuget.org
         if: steps.version.outputs.is_release == 'true'
