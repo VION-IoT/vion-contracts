@@ -60,8 +60,8 @@ Once a version is published to nuget.org, the version ID is permanent. You can *
 One-time setup per repo; flag this if you fork or rotate credentials:
 
 - GitHub secret `AZURE_DEVOPS_PAT` — PAT with `Packaging: Read & write` on the Azure DevOps feed.
-- GitHub secret `NUGET_USER` — nuget.org profile name that owns the Trusted Publishing policy (currently `VION-IoT`).
-- Trusted Publishing policy on nuget.org: Repository Owner `VION-IoT`, Repository `vion-contracts`, Workflow File `publish.yml`. See [NuGet's Trusted Publishing docs](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) for the UI walkthrough.
+- GitHub secret `NUGET_USER` — **individual** nuget.org username that is a member of the org owning the Trusted Publishing policy. Not the org name. (Docs use `contoso-bot` as the example — this matters; setting it to the org name produces `No matching trust policy owned by user 'X' was found`.)
+- Trusted Publishing policy on nuget.org: Package Owner `VION-IoT` (the org), Repository Owner `VION-IoT`, Repository `vion-contracts`, Workflow File `publish.yml`. See [NuGet's Trusted Publishing docs](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing) for the UI walkthrough.
 
 ## License
 
