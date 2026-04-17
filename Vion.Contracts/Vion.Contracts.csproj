@@ -9,12 +9,8 @@
         <IsPackable>true</IsPackable>
         <PackageId>Vion.Contracts</PackageId>
         <Description>Shared contracts (MQTT topics, payloads, FlatBuffers schemas, introspection models) used by the Vion Dale SDK and runtime.</Description>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <!-- PackageReadmeFile and the shared docs/package-readme.md are wired via Directory.Build.targets -->
     </PropertyGroup>
-
-    <ItemGroup>
-        <None Include="..\README.md" Pack="true" PackagePath="\"/>
-    </ItemGroup>
 
     <ItemGroup>
         <!--shim to be able to use readonly record structs in netstandard2.1-->
