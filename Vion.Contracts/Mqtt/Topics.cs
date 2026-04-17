@@ -67,7 +67,7 @@ namespace Vion.Contracts.Mqtt
         public const string LogLevelSet = "/cloud/system/logLevel/set";
 
         // Mesh -> Cloud
-        public const string LogLevelSetResponse = "/cloud/system/logLevel/set/response";
+        public const string LogLevelState = "/cloud/system/logLevel/state";
 
         // Mesh -> Cloud
         public const string SystemHealthState = "/cloud/system/health/state";
@@ -229,6 +229,12 @@ namespace Vion.Contracts.Mqtt
 
         // Mesh -> ServiceProvider
         public const string ServiceProviderRestart = "/" + ServiceProvider + "/restart";
+
+        // Mesh -> ServiceProvider
+        public const string ServiceProviderLogLevelSet = "/" + ServiceProvider + "/logLevel/set";
+
+        // ServiceProvider -> Mesh
+        public const string ServiceProviderLogLevelState = "/" + ServiceProvider + "/logLevel/state";
 
         #endregion
     }
