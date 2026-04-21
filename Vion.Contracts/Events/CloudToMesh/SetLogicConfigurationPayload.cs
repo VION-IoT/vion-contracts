@@ -18,6 +18,12 @@ namespace Vion.Contracts.Events.CloudToMesh
         public required List<ContractMapping> ContractMappings { get; set; }
 
         /// <summary>
+        ///     Pre-authorized HTTPS URLs for each distinct (PackageId, PackageVersion) referenced by LogicBlockInstances.
+        ///     Consumed by Dale's plugin loader to download packages without needing storage credentials of its own.
+        /// </summary>
+        public List<LogicBlockLibrarySource> LogicBlockLibrarySources { get; set; } = [];
+
+        /// <summary>
         ///     Deprecated. Use ContractMappings instead. Will be removed in next major version.
         /// </summary>
         [Obsolete("Use ContractMappings instead.")]
@@ -81,6 +87,17 @@ namespace Vion.Contracts.Events.CloudToMesh
             public required string MappedContractIdentifier { get; set; }
 
             public required string MappedInstallationTopic { get; set; }
+        }
+
+        public class LogicBlockLibrarySource
+        {
+            public required string PackageId { get; set; }
+
+            public required string PackageVersion { get; set; }
+
+            public required string DownloadUrl { get; set; }
+
+            public required DateTimeOffset DownloadUrlExpiresAt { get; set; }
         }
 
         /// <summary>
