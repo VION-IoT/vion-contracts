@@ -32,6 +32,13 @@
 
             public const string Format = "yyyy-MM-ddTHH:mm:ss.fffffffZ"; // todo why not just use "o" or "O" ? See test in HeaderSerializerShould
         }
+        
+        public static class ExpiresAt
+        {
+            public const string Name = "expires_at";
+
+            public const string Format = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
+        }
 
         public static class CreatedBy
         {
