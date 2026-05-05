@@ -309,5 +309,142 @@ namespace Vion.Contracts.Test.TypeRef
             var expected = "{\"type\":[\"number\",\"null\"],\"format\":\"double\"," + "\"minimum\":0,\"x-unit\":\"V\"}";
             Assert.AreEqual(expected, actual);
         }
+
+        // ── FromJsonSchema round-trip tests (§2.14) ────────────────────────────────────────────────
+
+        [TestMethod]
+        [DataRow(PrimitiveKind.Bool)]
+        [DataRow(PrimitiveKind.String)]
+        [DataRow(PrimitiveKind.Byte)]
+        [DataRow(PrimitiveKind.Short)]
+        [DataRow(PrimitiveKind.UShort)]
+        [DataRow(PrimitiveKind.Int)]
+        [DataRow(PrimitiveKind.UInt)]
+        [DataRow(PrimitiveKind.Long)]
+        [DataRow(PrimitiveKind.Float)]
+        [DataRow(PrimitiveKind.Double)]
+        [DataRow(PrimitiveKind.DateTime)]
+        [DataRow(PrimitiveKind.Duration)]
+        public void RoundtripPrimitiveTypeRefThroughJsonSchema(PrimitiveKind kind)
+        {
+            var original = TypeSchema.Of(new PrimitiveTypeRef(kind));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        [TestMethod]
+        public void RoundtripPrimitiveWithAnnotationsPreservesAllFields()
+        {
+            var original = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double),
+                                          new TypeAnnotations { Title = "Voltage", Description = "Setpoint", Unit = "V", Minimum = 0, Maximum = 250, ReadOnly = true },
+                                          ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original, parsed);
+        }
+
+        [TestMethod]
+        public void RoundtripEnumPreservesIdentity()
+        {
+            var original = TypeSchema.Of(new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original, parsed); // full TypeSchema equality; tests title not duplicated into annotations
+        }
+
+        [TestMethod]
+        public void RoundtripStructPreservesIdentity()
+        {
+            var struc = new StructTypeRef("Coordinates",
+                                          ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                                new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                          ImmutableArray.Create("lat", "lon"));
+            var original = TypeSchema.Of(struc);
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original, parsed);
+        }
+
+        [TestMethod]
+        public void RoundtripStructWithPerFieldAnnotationsPreservesAllAnnotations()
+        {
+            var s = new StructTypeRef("Coordinates3D",
+                                      ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("altitude", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("lat", "lon", "altitude"));
+            var sfa = ImmutableDictionary<string, TypeAnnotations>.Empty
+                                                                  .Add("lat", new TypeAnnotations { Unit = "deg", Minimum = -90, Maximum = 90 })
+                                                                  .Add("lon", new TypeAnnotations { Unit = "deg", Minimum = -180, Maximum = 180 })
+                                                                  .Add("altitude", new TypeAnnotations { Unit = "m" });
+            var original = new TypeSchema(s, TypeAnnotations.None, sfa);
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original, parsed);
+        }
+
+        [TestMethod]
+        public void RoundtripNullablePrimitive()
+        {
+            var original = TypeSchema.Of(new NullableTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        [TestMethod]
+        public void RoundtripNullableEnum()
+        {
+            var original = TypeSchema.Of(new NullableTypeRef(new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning"))));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        [TestMethod]
+        public void RoundtripArrayOfNullableStruct()
+        {
+            var struc = new StructTypeRef("Coordinates",
+                                          ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                                new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                          ImmutableArray.Create("lat", "lon"));
+            var original = TypeSchema.Of(new ArrayTypeRef(new NullableTypeRef(struc)));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        // ── Profile rejection tests ────────────────────────────────────────────────────────────────
+
+        [TestMethod]
+        [DataRow("{\"$ref\":\"#/defs/X\"}")]
+        [DataRow("{\"oneOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}")]
+        [DataRow("{\"type\":\"string\",\"pattern\":\"[a-z]+\"}")]
+        [DataRow("{\"type\":\"string\",\"minLength\":5}")]
+        [DataRow("{\"type\":\"number\",\"exclusiveMinimum\":0}")]
+        [DataRow("{\"type\":\"number\",\"multipleOf\":2}")]
+        [DataRow("{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":1}")]
+        [DataRow("{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":{\"type\":\"number\"}}}")]
+        [DataRow("{\"type\":\"object\",\"title\":\"X\",\"properties\":{},\"required\":[],\"patternProperties\":{}}")]
+        [DataRow("{\"type\":\"object\",\"title\":\"X\",\"properties\":{},\"required\":[],\"additionalProperties\":true}")]
+        public void RejectNonProfileKeywordsWithInvalidSchemaException(string schemaJson)
+        {
+            var node = JsonNode.Parse(schemaJson)!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(node));
+        }
+
+        [TestMethod]
+        public void RejectMissingTypeKeyword()
+        {
+            var node = JsonNode.Parse("{\"title\":\"X\"}")!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(node));
+        }
+
+        [TestMethod]
+        public void RejectEnumWithoutTitle()
+        {
+            var node = JsonNode.Parse("{\"type\":\"string\",\"enum\":[\"A\",\"B\"]}")!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(node));
+        }
+
+        [TestMethod]
+        public void RejectStructWithoutTitle()
+        {
+            var node = JsonNode.Parse("{\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}")!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(node));
+        }
     }
 }

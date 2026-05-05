@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace Vion.Contracts.TypeRef
 {
@@ -31,6 +33,92 @@ namespace Vion.Contracts.TypeRef
             get =>
                 DisplayName is null && Group is null && Order is null && Category is null && Importance is null && UIHint is null && Decimals is null &&
                 (StatusMappings is null || StatusMappings.IsEmpty);
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        ///     Custom equality required: <see cref="ImmutableDictionary{TKey,TValue}" /> uses reference equality
+        ///     by default, which breaks round-trip comparisons after serialization. Mirrors the pattern in
+        ///     <see cref="TypeSchema" />.
+        /// </remarks>
+        public bool Equals(Presentation? other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (DisplayName != other.DisplayName)
+            {
+                return false;
+            }
+
+            if (Group != other.Group)
+            {
+                return false;
+            }
+
+            if (Order != other.Order)
+            {
+                return false;
+            }
+
+            if (Category != other.Category)
+            {
+                return false;
+            }
+
+            if (Importance != other.Importance)
+            {
+                return false;
+            }
+
+            if (UIHint != other.UIHint)
+            {
+                return false;
+            }
+
+            if (Decimals != other.Decimals)
+            {
+                return false;
+            }
+
+            var leftMappings = StatusMappings;
+            var rightMappings = other.StatusMappings;
+            if (leftMappings is null && rightMappings is null)
+            {
+                return true;
+            }
+
+            if (leftMappings is null || rightMappings is null)
+            {
+                return false;
+            }
+
+            return leftMappings.Count == rightMappings.Count && leftMappings.OrderBy(kv => kv.Key).SequenceEqual(rightMappings.OrderBy(kv => kv.Key));
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(DisplayName);
+            hash.Add(Group);
+            hash.Add(Order);
+            hash.Add(Category);
+            hash.Add(Importance);
+            hash.Add(UIHint);
+            hash.Add(Decimals);
+            if (StatusMappings is not null)
+            {
+                foreach (var kv in StatusMappings.OrderBy(kv => kv.Key))
+                {
+                    hash.Add(kv.Key);
+                    hash.Add(kv.Value);
+                }
+            }
+
+            return hash.ToHashCode();
         }
     }
 }

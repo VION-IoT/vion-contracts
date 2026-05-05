@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 
@@ -11,9 +12,27 @@ namespace Vion.Contracts.TypeRef
     /// </summary>
     public static class TypeSchemaSerialization
     {
+        // ── FromJsonSchema (§2.14) ──────────────────────────────────────────────────────────────────
+
+        private static readonly HashSet<string> AllowedKeywords = new()
+                                                                  {
+                                                                      "type", "format", "title", "description",
+                                                                      "minimum", "maximum",
+                                                                      "x-unit", "readOnly",
+                                                                      "enum",
+                                                                      "properties", "required", "additionalProperties",
+                                                                      "items",
+                                                                  };
+
         public static JsonNode ToJsonSchema(this TypeSchema schema)
         {
             return BuildSchema(schema.Type, schema.Annotations, schema.StructFieldAnnotations);
+        }
+
+        public static TypeSchema FromJsonSchema(JsonNode node)
+        {
+            var (type, annotations, sfa) = ParseNode(node);
+            return new TypeSchema(type, annotations, sfa);
         }
 
         private static JsonNode BuildSchema(TypeRef type, TypeAnnotations annotations, ImmutableDictionary<string, TypeAnnotations> structFieldAnnotations)
@@ -190,6 +209,194 @@ namespace Vion.Contracts.TypeRef
             {
                 obj["readOnly"] = true;
             }
+        }
+
+        private static (TypeRef, TypeAnnotations, ImmutableDictionary<string, TypeAnnotations>) ParseNode(JsonNode node)
+        {
+            if (node is not JsonObject obj)
+            {
+                throw new InvalidSchemaException("Schema must be a JSON object");
+            }
+
+            foreach (var kv in obj)
+            {
+                if (!AllowedKeywords.Contains(kv.Key))
+                {
+                    throw new InvalidSchemaException($"Disallowed keyword in Dale profile: '{kv.Key}'");
+                }
+            }
+
+            var (typeStr, isNullable) = ParseTypeKeyword(obj);
+            var annotations = ParseAnnotations(obj);
+            var (typeRef, sfa) = typeStr switch
+            {
+                "boolean" => (new PrimitiveTypeRef(PrimitiveKind.Bool), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                "string" => ParseString(obj),
+                "integer" => (ParsePrimitiveInteger(obj), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                "number" => (ParsePrimitiveNumber(obj), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                "object" => ParseObject(obj),
+                "array" => ParseArray(obj),
+                _ => throw new InvalidSchemaException($"Unknown type: '{typeStr}'"),
+            };
+
+            // For nominal types (enum/struct), Title is identity-bearing on the TypeRef —
+            // don't double up by leaving it in annotations too. Mirrors the BuildEnum/BuildStruct
+            // paths that set obj["title"] directly.
+            if (typeRef is EnumTypeRef or StructTypeRef)
+            {
+                annotations = annotations with { Title = null };
+            }
+
+            return (isNullable ? new NullableTypeRef(typeRef) : typeRef, annotations, sfa);
+        }
+
+        private static (string, bool) ParseTypeKeyword(JsonObject obj)
+        {
+            var t = obj["type"] ?? throw new InvalidSchemaException("Missing 'type' keyword");
+            if (t is JsonValue v && v.TryGetValue<string>(out var s))
+            {
+                return (s, false);
+            }
+
+            if (t is JsonArray arr && arr.Count == 2)
+            {
+                var first = arr[0]?.GetValue<string>();
+                var second = arr[1]?.GetValue<string>();
+                if (second == "null" && first is not null)
+                {
+                    return (first, true);
+                }
+
+                if (first == "null" && second is not null)
+                {
+                    return (second, true);
+                }
+            }
+
+            throw new InvalidSchemaException("Unsupported 'type' shape; allowed: string or [X, \"null\"]");
+        }
+
+        private static TypeAnnotations ParseAnnotations(JsonObject obj)
+        {
+            return new TypeAnnotations
+                   {
+                       Title = obj["title"]?.GetValue<string>(),
+                       Description = obj["description"]?.GetValue<string>(),
+                       Unit = obj["x-unit"]?.GetValue<string>(),
+                       Minimum = obj["minimum"]?.GetValue<double>(),
+                       Maximum = obj["maximum"]?.GetValue<double>(),
+                       ReadOnly = obj["readOnly"]?.GetValue<bool>() ?? false,
+                   };
+        }
+
+        private static TypeRef ParsePrimitiveInteger(JsonObject obj)
+        {
+            return obj["format"]?.GetValue<string>() switch
+            {
+                "uint8" => new PrimitiveTypeRef(PrimitiveKind.Byte),
+                "int16" => new PrimitiveTypeRef(PrimitiveKind.Short),
+                "uint16" => new PrimitiveTypeRef(PrimitiveKind.UShort),
+                "int32" => new PrimitiveTypeRef(PrimitiveKind.Int),
+                "uint32" => new PrimitiveTypeRef(PrimitiveKind.UInt),
+                "int64" => new PrimitiveTypeRef(PrimitiveKind.Long),
+                null => new PrimitiveTypeRef(PrimitiveKind.Int), // default when format omitted
+                var f => throw new InvalidSchemaException($"Unsupported integer format: '{f}'"),
+            };
+        }
+
+        private static TypeRef ParsePrimitiveNumber(JsonObject obj)
+        {
+            return obj["format"]?.GetValue<string>() switch
+            {
+                "float" => new PrimitiveTypeRef(PrimitiveKind.Float),
+                "double" => new PrimitiveTypeRef(PrimitiveKind.Double),
+                null => new PrimitiveTypeRef(PrimitiveKind.Double), // default when format omitted
+                var f => throw new InvalidSchemaException($"Unsupported number format: '{f}'"),
+            };
+        }
+
+        private static (TypeRef, ImmutableDictionary<string, TypeAnnotations>) ParseString(JsonObject obj)
+        {
+            if (obj["enum"] is JsonArray enumArr)
+            {
+                var members = ImmutableArray.CreateBuilder<string>();
+                foreach (var e in enumArr)
+                {
+                    if (e is null)
+                    {
+                        continue; // null appears in nullable enum; the wrapping NullableTypeRef captures it
+                    }
+
+                    if (!e.AsValue().TryGetValue<string>(out var name))
+                    {
+                        throw new InvalidSchemaException("Enum members must be strings");
+                    }
+
+                    members.Add(name);
+                }
+
+                var title = obj["title"]?.GetValue<string>() ?? throw new InvalidSchemaException("Enum schema must include 'title'");
+                return (new EnumTypeRef(title, members.ToImmutable()), ImmutableDictionary<string, TypeAnnotations>.Empty);
+            }
+
+            return obj["format"]?.GetValue<string>() switch
+            {
+                "date-time" => (new PrimitiveTypeRef(PrimitiveKind.DateTime), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                "duration" => (new PrimitiveTypeRef(PrimitiveKind.Duration), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                null => (new PrimitiveTypeRef(PrimitiveKind.String), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                var f => throw new InvalidSchemaException($"Unsupported string format: '{f}'"),
+            };
+        }
+
+        private static (TypeRef, ImmutableDictionary<string, TypeAnnotations>) ParseObject(JsonObject obj)
+        {
+            var ap = obj["additionalProperties"];
+            if (ap is null || (ap is JsonValue av && av.TryGetValue<bool>(out var b) && !b))
+            {
+                // ok — additionalProperties absent or explicitly false
+            }
+            else
+            {
+                throw new InvalidSchemaException("Struct must declare additionalProperties: false");
+            }
+
+            var title = obj["title"]?.GetValue<string>() ?? throw new InvalidSchemaException("Struct schema must include 'title'");
+
+            var props = obj["properties"] as JsonObject ?? throw new InvalidSchemaException("Struct schema must include 'properties'");
+            var requiredArr = obj["required"] as JsonArray ?? new JsonArray();
+
+            var fields = ImmutableArray.CreateBuilder<StructField>();
+            var sfaBuilder = ImmutableDictionary.CreateBuilder<string, TypeAnnotations>();
+            foreach (var kv in props)
+            {
+                var fieldNode = kv.Value!;
+                var (fieldType, fieldAnn, _) = ParseNode(fieldNode);
+                fields.Add(new StructField(kv.Key, fieldType));
+                if (fieldAnn != TypeAnnotations.None)
+                {
+                    sfaBuilder[kv.Key] = fieldAnn;
+                }
+            }
+
+            var required = ImmutableArray.CreateBuilder<string>();
+            foreach (var r in requiredArr)
+            {
+                required.Add(r!.GetValue<string>());
+            }
+
+            return (new StructTypeRef(title, fields.ToImmutable(), required.ToImmutable()), sfaBuilder.ToImmutable());
+        }
+
+        private static (TypeRef, ImmutableDictionary<string, TypeAnnotations>) ParseArray(JsonObject obj)
+        {
+            var items = obj["items"] ?? throw new InvalidSchemaException("Array schema must include 'items'");
+            var (itemType, _, sfa) = ParseNode(items);
+            if (itemType is ArrayTypeRef)
+            {
+                throw new InvalidSchemaException("Nested arrays are not supported in the Dale profile");
+            }
+
+            return (new ArrayTypeRef(itemType), sfa);
         }
     }
 }
