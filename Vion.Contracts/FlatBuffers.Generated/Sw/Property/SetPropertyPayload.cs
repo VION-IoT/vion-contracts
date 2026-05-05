@@ -20,17 +20,17 @@ public struct SetPropertyPayload : IFlatbufferObject
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public SetPropertyPayload __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
-  public Vion.Contracts.FlatBuffers.Common.CommonValue? Value { get { int o = __p.__offset(4); return o != 0 ? (Vion.Contracts.FlatBuffers.Common.CommonValue?)(new Vion.Contracts.FlatBuffers.Common.CommonValue()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
+  public Vion.Contracts.FlatBuffers.Common.PropertyValue? Value { get { int o = __p.__offset(4); return o != 0 ? (Vion.Contracts.FlatBuffers.Common.PropertyValue?)(new Vion.Contracts.FlatBuffers.Common.PropertyValue()).__assign(__p.__indirect(o + __p.bb_pos), __p.bb) : null; } }
 
   public static Offset<Vion.Contracts.FlatBuffers.Sw.Property.SetPropertyPayload> CreateSetPropertyPayload(FlatBufferBuilder builder,
-      Offset<Vion.Contracts.FlatBuffers.Common.CommonValue> valueOffset = default(Offset<Vion.Contracts.FlatBuffers.Common.CommonValue>)) {
+      Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue> valueOffset = default(Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue>)) {
     builder.StartTable(1);
     SetPropertyPayload.AddValue(builder, valueOffset);
     return SetPropertyPayload.EndSetPropertyPayload(builder);
   }
 
   public static void StartSetPropertyPayload(FlatBufferBuilder builder) { builder.StartTable(1); }
-  public static void AddValue(FlatBufferBuilder builder, Offset<Vion.Contracts.FlatBuffers.Common.CommonValue> valueOffset) { builder.AddOffset(0, valueOffset.Value, 0); }
+  public static void AddValue(FlatBufferBuilder builder, Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue> valueOffset) { builder.AddOffset(0, valueOffset.Value, 0); }
   public static Offset<Vion.Contracts.FlatBuffers.Sw.Property.SetPropertyPayload> EndSetPropertyPayload(FlatBufferBuilder builder) {
     int o = builder.EndTable();
     return new Offset<Vion.Contracts.FlatBuffers.Sw.Property.SetPropertyPayload>(o);
@@ -45,7 +45,7 @@ static public class SetPropertyPayloadVerify
   static public bool Verify(Google.FlatBuffers.Verifier verifier, uint tablePos)
   {
     return verifier.VerifyTableStart(tablePos)
-      && verifier.VerifyTable(tablePos, 4 /*Value*/, Vion.Contracts.FlatBuffers.Common.CommonValueVerify.Verify, false)
+      && verifier.VerifyTable(tablePos, 4 /*Value*/, Vion.Contracts.FlatBuffers.Common.PropertyValueVerify.Verify, false)
       && verifier.VerifyTableEnd(tablePos);
   }
 }

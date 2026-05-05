@@ -1,10 +1,10 @@
-include "Common/common_value.fbs";
+include "Common/property_value.fbs";
 
 namespace Vion.Contracts.FlatBuffers.Sw.Property;
 
 // Response payload for getting the value of a property
 table GetPropertyResponsePayload {
-  value:Vion.Contracts.FlatBuffers.Common.CommonValue;
+  value:Vion.Contracts.FlatBuffers.Common.PropertyValue;
 }
 
 root_type GetPropertyResponsePayload;

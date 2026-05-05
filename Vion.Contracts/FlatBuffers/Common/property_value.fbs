@@ -1,0 +1,33 @@
+namespace Vion.Contracts.FlatBuffers.Common;
+
+// Scalar variants (6) — Long covers short/int/long; Double covers float/double; String covers string and enums.
+table BoolVal     { value: bool;   }
+table LongVal     { value: long;   }
+table DoubleVal   { value: double; }
+table StringVal   { value: string; }
+table DateTimeVal { unix_ms: long; }
+table DurationVal { ticks:   long; }
+
+// Array variants (6) — `present` is optional. Absent or empty means all elements present.
+// When present, present[i] = false means values[i] is null (undefined for type-defaulted slot).
+table BoolArray     { values: [bool];   present: [bool]; }
+table LongArray     { values: [long];   present: [bool]; }
+table DoubleArray   { values: [double]; present: [bool]; }
+table StringArray   { values: [string]; present: [bool]; }
+table DateTimeArray { unix_ms: [long];  present: [bool]; }
+table DurationArray { ticks:   [long];  present: [bool]; }
+
+// Struct variants (2) — present[] in StructArray marks null elements
+table NamedValue { name: string; value: PropertyValue; }   // value.payload ∈ scalar variants only (flat-struct rule)
+table StructVal  { fields: [NamedValue]; }
+table StructArray { items: [StructVal]; present: [bool]; }
+
+// Top-level union; NONE = null
+union ValuePayload {
+  BoolVal, LongVal, DoubleVal, StringVal, DateTimeVal, DurationVal,
+  BoolArray, LongArray, DoubleArray, StringArray, DateTimeArray, DurationArray,
+  StructVal, StructArray
+}
+
+table PropertyValue { payload: ValuePayload; }
+root_type PropertyValue;
