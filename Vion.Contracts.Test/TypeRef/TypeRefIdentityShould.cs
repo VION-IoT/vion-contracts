@@ -103,15 +103,45 @@ namespace Vion.Contracts.Test.TypeRef
             var a = new ArrayTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double));
             var b = new ArrayTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double));
             Assert.AreEqual(a, b);
+            Assert.AreEqual(a.GetHashCode(), b.GetHashCode());
         }
 
         [TestMethod]
         public void RecognizeNullableOfStructAsEqualWhenInnerEqual()
         {
-            var s = new StructTypeRef("Coordinates", [new StructField("Lat", new PrimitiveTypeRef(PrimitiveKind.Double))], ["Lat"]);
-            var a = new NullableTypeRef(s);
-            var b = new NullableTypeRef(s);
+            var struc = new StructTypeRef("Coordinates", ImmutableArray.Create(new StructField("Lat", new PrimitiveTypeRef(PrimitiveKind.Double))), ImmutableArray.Create("Lat"));
+            var a = new NullableTypeRef(struc);
+            var b = new NullableTypeRef(struc);
             Assert.AreEqual(a, b);
+            Assert.AreEqual(a.GetHashCode(), b.GetHashCode());
+        }
+
+        [TestMethod]
+        public void DistinguishEnumsWithSameMembersInDifferentOrder()
+        {
+            var a = new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var b = new EnumTypeRef("AlarmState", ImmutableArray.Create("Warning", "Ok", "Critical"));
+            Assert.AreNotEqual(a, b);
+        }
+
+        [TestMethod]
+        public void TreatDefaultMembersAsDistinctFromPopulatedMembers()
+        {
+            var populated = new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok"));
+            var defaulted = new EnumTypeRef("AlarmState", default);
+            Assert.AreNotEqual(populated, defaulted);
+
+            // Two defaulted instances are also not equal — default is "unknown", not "empty".
+            var alsoDefaulted = new EnumTypeRef("AlarmState", default);
+            Assert.AreNotEqual(defaulted, alsoDefaulted);
+        }
+
+        [TestMethod]
+        public void DistinguishConcreteTypeRefsAcrossKinds()
+        {
+            var primitive = new PrimitiveTypeRef(PrimitiveKind.Double);
+            var enumRef = new EnumTypeRef("Double", ImmutableArray.Create("A"));
+            Assert.AreNotEqual<Vion.Contracts.TypeRef.TypeRef>(primitive, enumRef);
         }
     }
 }

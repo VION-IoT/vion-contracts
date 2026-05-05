@@ -25,6 +25,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <!-- ImmutableArray<T> is not in netstandard2.1's box; explicit pin required. -->
         <PackageReference Include="System.Collections.Immutable" Version="10.0.7"/>
     </ItemGroup>
 
