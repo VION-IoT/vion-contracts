@@ -27,6 +27,11 @@ namespace Vion.Contracts.TypeRef
                 NullableTypeRef n => BuildNullable(n, annotations, structFieldAnnotations),
                 _ => throw new InvalidOperationException($"Unknown TypeRef: {type.GetType()}"),
             };
+            // Annotations are applied centrally here (after dispatch), not inside each Build method.
+            // Build methods that recurse (BuildArray, BuildNullable) pass annotations down so the
+            // recursive BuildSchema call can apply them at the inner level. Build methods that don't
+            // recurse (BuildPrimitive, BuildEnum, BuildStruct) accept only the data they need to
+            // construct the node — annotations are layered on top here.
             ApplyAnnotations(node, annotations);
             return node;
         }
