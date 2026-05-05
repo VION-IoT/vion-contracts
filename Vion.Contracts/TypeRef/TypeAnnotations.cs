@@ -20,5 +20,12 @@ namespace Vion.Contracts.TypeRef
         public double? Maximum { get; init; }
 
         public bool ReadOnly { get; init; }
+
+        public bool IsEmpty
+        {
+            get =>
+                Title is null && Description is null && Unit is null
+                && Minimum is null && Maximum is null && !ReadOnly;
+        }
     }
 }
