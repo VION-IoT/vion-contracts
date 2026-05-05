@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 
 namespace Vion.Contracts.Introspection
 {
@@ -119,54 +120,49 @@ namespace Vion.Contracts.Introspection
         public class ServicePropertyInfo
         {
             /// <summary>
-            ///     The identifier of the property, e.g. "MaxCurrent", "IsActive"
+            ///     The identifier of the property, e.g. "MaxCurrent", "IsActive".
             /// </summary>
             public string Identifier { get; set; } = null!;
 
             /// <summary>
-            ///     e.g. System.Double, System.Int32, System.Boolean
+            ///     JSON Schema 2020-12 document (Dale profile) describing the property's data shape.
             /// </summary>
-            public string TypeFullName { get; set; } = null!;
+            public JsonNode Schema { get; set; } = null!;
 
             /// <summary>
-            ///     Indicates whether the property can be written (e.g. via binding to a writable property).
+            ///     Optional UI presentation hints (display name, group, ordering, etc.). May be omitted (null)
+            ///     for properties without presentation metadata.
             /// </summary>
-            public bool Writable { get; set; }
+            public JsonNode? Presentation { get; set; }
 
             /// <summary>
-            ///     Service element interface type.
-            ///     e.g. Number, Boolean, String
+            ///     Optional dale-runtime behavior hints (e.g. <c>persistent</c>). May be omitted (null) for
+            ///     properties without runtime metadata.
             /// </summary>
-            public string ServiceElementType { get; set; } = null!;
-
-            /// <summary>
-            ///     UI information like DefaultName, Unit, MinValue, MaxValue, StepSize
-            /// </summary>
-            public Dictionary<string, object> Annotations { get; set; } = [];
+            public JsonNode? Runtime { get; set; }
         }
 
         public class ServiceMeasuringPointInfo
         {
             /// <summary>
-            ///     Identifier of the measuring point, e.g. "Power", "VoltageL1"
+            ///     The identifier of the measuring point, e.g. "Power", "VoltageL1".
             /// </summary>
             public string Identifier { get; set; } = null!;
 
             /// <summary>
-            ///     .NET type full name, e.g. System.Double, System.Int32, System.Boolean
+            ///     JSON Schema 2020-12 document (Dale profile) describing the measuring point's data shape.
             /// </summary>
-            public string TypeFullName { get; set; } = null!;
+            public JsonNode Schema { get; set; } = null!;
 
             /// <summary>
-            ///     Service element interface type.
-            ///     e.g. Number, Boolean, String
+            ///     Optional UI presentation hints. May be omitted (null).
             /// </summary>
-            public string ServiceElementType { get; set; } = null!;
+            public JsonNode? Presentation { get; set; }
 
             /// <summary>
-            ///     UI information like DefaultName, Unit
+            ///     Optional dale-runtime behavior hints. May be omitted (null).
             /// </summary>
-            public Dictionary<string, object> Annotations { get; set; } = [];
+            public JsonNode? Runtime { get; set; }
         }
 
         public class ServiceRelationInfo
