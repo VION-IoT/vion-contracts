@@ -73,12 +73,34 @@ namespace Vion.Contracts.TypeRef
                    };
         }
 
+        private static JsonObject BuildStruct(StructTypeRef s, ImmutableDictionary<string, TypeAnnotations> structFieldAnnotations)
+        {
+            var properties = new JsonObject();
+            foreach (var f in s.Fields)
+            {
+                var fieldAnnotations = structFieldAnnotations.TryGetValue(f.Name, out var a) ? a : TypeAnnotations.None;
+                var fieldNode = BuildSchema(f.Type, fieldAnnotations, ImmutableDictionary<string, TypeAnnotations>.Empty);
+                properties[f.Name] = fieldNode;
+            }
+
+            var required = new JsonArray();
+            foreach (var r in s.Required)
+            {
+                required.Add(r);
+            }
+
+            return new JsonObject
+                   {
+                       ["type"] = "object",
+                       ["title"] = s.Title,
+                       ["properties"] = properties,
+                       ["required"] = required,
+                       ["additionalProperties"] = false,
+                   };
+        }
+
         // Stubs filled in by later tasks. Throwing NotImplementedException keeps the build green
         // while making misuse loud — only callers that actually exercise these branches will fault.
-        private static JsonObject BuildStruct(StructTypeRef s, ImmutableDictionary<string, TypeAnnotations> sfa)
-        {
-            throw new NotImplementedException("Struct serialization arrives in §2.10");
-        }
 
         private static JsonObject BuildArray(ArrayTypeRef a, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {

@@ -64,5 +64,60 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.AreEqual("{\"type\":\"string\",\"title\":\"Severity\",\"enum\":[\"High\",\"Medium\",\"Low\"]}", descJson);
             Assert.AreNotEqual(ascJson, descJson);
         }
+
+        [TestMethod]
+        public void EmitJsonSchemaForStructWithPrimitiveFields()
+        {
+            var s = new StructTypeRef("Coordinates",
+                                      ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("lat", "lon"));
+            var schema = TypeSchema.Of(s);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            var expected = "{\"type\":\"object\"," + "\"title\":\"Coordinates\"," + "\"properties\":{" + "\"lat\":{\"type\":\"number\",\"format\":\"double\"}," +
+                           "\"lon\":{\"type\":\"number\",\"format\":\"double\"}" + "}," + "\"required\":[\"lat\",\"lon\"]," + "\"additionalProperties\":false}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void PreserveStructFieldDeclarationOrderInJsonSchema()
+        {
+            var ascending = new StructTypeRef("Pair",
+                                              ImmutableArray.Create(new StructField("a", new PrimitiveTypeRef(PrimitiveKind.Int)),
+                                                                    new StructField("b", new PrimitiveTypeRef(PrimitiveKind.Int))),
+                                              ImmutableArray.Create("a", "b"));
+            var descending = new StructTypeRef("Pair",
+                                               ImmutableArray.Create(new StructField("b", new PrimitiveTypeRef(PrimitiveKind.Int)),
+                                                                     new StructField("a", new PrimitiveTypeRef(PrimitiveKind.Int))),
+                                               ImmutableArray.Create("b", "a"));
+
+            var ascJson = TypeSchema.Of(ascending).ToJsonSchema().ToJsonString();
+            var descJson = TypeSchema.Of(descending).ToJsonSchema().ToJsonString();
+
+            // Properties object key order, plus required-array element order, both differ.
+            Assert.AreNotEqual(ascJson, descJson);
+            StringAssert.Contains(ascJson, "\"properties\":{\"a\":{");
+            StringAssert.Contains(descJson, "\"properties\":{\"b\":{");
+            StringAssert.Contains(ascJson, "\"required\":[\"a\",\"b\"]");
+            StringAssert.Contains(descJson, "\"required\":[\"b\",\"a\"]");
+        }
+
+        [TestMethod]
+        public void EmitRequiredArraySubsetWhenSomeFieldsOptional()
+        {
+            var s = new StructTypeRef("PartialPoint",
+                                      ImmutableArray.Create(new StructField("x", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("y", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("z", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("x", "y")); // z is optional
+            var actual = TypeSchema.Of(s).ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"properties\":{\"x\":{");
+            StringAssert.Contains(actual, "\"y\":{");
+            StringAssert.Contains(actual, "\"z\":{");
+            StringAssert.Contains(actual, "\"required\":[\"x\",\"y\"]");
+            Assert.IsFalse(actual.Contains("\"required\":[\"x\",\"y\",\"z\"]"));
+        }
     }
 }
