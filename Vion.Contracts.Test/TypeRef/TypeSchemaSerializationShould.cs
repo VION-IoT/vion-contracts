@@ -117,7 +117,7 @@ namespace Vion.Contracts.Test.TypeRef
             StringAssert.Contains(actual, "\"y\":{");
             StringAssert.Contains(actual, "\"z\":{");
             StringAssert.Contains(actual, "\"required\":[\"x\",\"y\"]");
-            Assert.DoesNotContain("\"required\":[\"x\",\"y\",\"z\"]", actual);
+            Assert.DoesNotContain(actual, "\"required\":[\"x\",\"y\",\"z\"]");
         }
     }
 }
