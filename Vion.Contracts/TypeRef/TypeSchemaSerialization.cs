@@ -99,17 +99,47 @@ namespace Vion.Contracts.TypeRef
                    };
         }
 
-        // Stubs filled in by later tasks. Throwing NotImplementedException keeps the build green
-        // while making misuse loud — only callers that actually exercise these branches will fault.
-
         private static JsonObject BuildArray(ArrayTypeRef a, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
-            throw new NotImplementedException("Array serialization arrives in §2.11");
+            // Recurse into the items type, passing annotations through. The outer BuildSchema's
+            // ApplyAnnotations call will also apply annotations to the array node itself —
+            // by spec §5.1 convention, x-unit etc. live on both the array and its items.
+            var items = BuildSchema(a.Items, ann, sfa);
+            return new JsonObject
+                   {
+                       ["type"] = "array",
+                       ["items"] = items,
+                   };
         }
 
         private static JsonObject BuildNullable(NullableTypeRef n, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
-            throw new NotImplementedException("Nullable serialization arrives in §2.12");
+            var inner = BuildSchema(n.Inner, ann, sfa);
+            if (inner is not JsonObject obj)
+            {
+                throw new InvalidOperationException($"Unexpected schema node: {inner.GetType()}");
+            }
+
+            // Widen "type": "X" → ["X", "null"].
+            if (obj["type"] is JsonValue v && v.TryGetValue<string>(out var typeStr))
+            {
+                obj["type"] = new JsonArray(typeStr, "null");
+            }
+
+            // For enums, append null to the "enum" array.
+            if (obj["enum"] is JsonArray enumArr)
+            {
+                var copy = new JsonArray();
+                foreach (var e in enumArr)
+                {
+                    copy.Add(e?.DeepClone());
+                }
+
+                copy.Add(null);
+                obj["enum"] = copy;
+            }
+
+            return obj;
         }
 
         private static void ApplyAnnotations(JsonNode node, TypeAnnotations ann)

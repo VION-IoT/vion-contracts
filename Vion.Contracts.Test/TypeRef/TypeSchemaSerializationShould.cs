@@ -119,5 +119,81 @@ namespace Vion.Contracts.Test.TypeRef
             StringAssert.Contains(actual, "\"required\":[\"x\",\"y\"]");
             Assert.DoesNotContain(actual, "\"required\":[\"x\",\"y\",\"z\"]");
         }
+
+        [TestMethod]
+        public void EmitJsonSchemaForArrayOfPrimitive()
+        {
+            var schema = TypeSchema.Of(new ArrayTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)));
+            var actual = schema.ToJsonSchema().ToJsonString();
+            var expected = "{\"type\":\"array\",\"items\":{\"type\":\"number\",\"format\":\"double\"}}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForArrayOfEnum()
+        {
+            var schema = TypeSchema.Of(new ArrayTypeRef(new EnumTypeRef("Severity", ImmutableArray.Create("Low", "High"))));
+            var actual = schema.ToJsonSchema().ToJsonString();
+            var expected = "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"title\":\"Severity\",\"enum\":[\"Low\",\"High\"]}}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForArrayOfStruct()
+        {
+            var struc = new StructTypeRef("Coordinates", ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double))), ImmutableArray.Create("lat"));
+            var schema = TypeSchema.Of(new ArrayTypeRef(struc));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"type\":\"array\"");
+            StringAssert.Contains(actual, "\"items\":{\"type\":\"object\"");
+            StringAssert.Contains(actual, "\"title\":\"Coordinates\"");
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForNullablePrimitive()
+        {
+            var schema = TypeSchema.Of(new NullableTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)));
+            var actual = schema.ToJsonSchema().ToJsonString();
+            var expected = "{\"type\":[\"number\",\"null\"],\"format\":\"double\"}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForNullableEnumWithNullAppendedToEnumArray()
+        {
+            var schema = TypeSchema.Of(new NullableTypeRef(new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning"))));
+            var actual = schema.ToJsonSchema().ToJsonString();
+            var expected = "{\"type\":[\"string\",\"null\"],\"title\":\"AlarmState\",\"enum\":[\"Ok\",\"Warning\",null]}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForNullableStructWithTypeArrayWidened()
+        {
+            var struc = new StructTypeRef("Coordinates", ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double))), ImmutableArray.Create("lat"));
+            var schema = TypeSchema.Of(new NullableTypeRef(struc));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"type\":[\"object\",\"null\"]");
+            StringAssert.Contains(actual, "\"title\":\"Coordinates\"");
+            StringAssert.Contains(actual, "\"additionalProperties\":false");
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForArrayOfNullableStruct()
+        {
+            var struc = new StructTypeRef("Coordinates",
+                                          ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                                new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                          ImmutableArray.Create("lat", "lon"));
+            var schema = TypeSchema.Of(new ArrayTypeRef(new NullableTypeRef(struc)));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            // From spec §5.1's worked example.
+            StringAssert.Contains(actual, "\"type\":\"array\"");
+            StringAssert.Contains(actual, "\"type\":[\"object\",\"null\"]");
+            StringAssert.Contains(actual, "\"title\":\"Coordinates\"");
+        }
     }
 }
