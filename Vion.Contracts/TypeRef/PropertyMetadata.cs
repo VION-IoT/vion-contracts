@@ -11,6 +11,9 @@ namespace Vion.Contracts.TypeRef
         ///     Convenience factory: creates a <see cref="PropertyMetadata" /> with no presentation hints
         ///     and no runtime flags.
         /// </summary>
-        public static PropertyMetadata Of(TypeSchema schema) => new(schema, Presentation.None, RuntimeMetadata.None);
+        public static PropertyMetadata Of(TypeSchema schema)
+        {
+            return new PropertyMetadata(schema, Presentation.None, RuntimeMetadata.None);
+        }
     }
 }

@@ -1,6 +1,6 @@
 using System;
-using System.Globalization;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json.Nodes;
 using System.Xml;
@@ -378,7 +378,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrEncodeIntWritesJsonNumber()
         {
             var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Int);
-            var json = ClrEncodeAndDecode((int)42, schema);
+            var json = ClrEncodeAndDecode(42, schema);
             Assert.IsNotNull(json);
             Assert.AreEqual(42L, json!.GetValue<long>());
         }
@@ -414,7 +414,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrEncodeFloatWritesJsonNumber()
         {
             var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Float);
-            var json = ClrEncodeAndDecode((float)1.5f, schema);
+            var json = ClrEncodeAndDecode(1.5f, schema);
             Assert.IsNotNull(json);
             Assert.AreEqual(1.5, json!.GetValue<double>(), 0.001);
         }
@@ -544,7 +544,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrEncodeNullablePrimitiveNullWritesJsonNull()
         {
             var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
-            var json = ClrEncodeAndDecode((double?)null, schema);
+            var json = ClrEncodeAndDecode(null, schema);
             Assert.IsNull(json);
         }
 
@@ -571,7 +571,7 @@ namespace Vion.Contracts.Test.Codec
                                                                          new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
                                                    ImmutableArray.Create("lat", "lon"));
             var schema = new TR.NullableTypeRef(coordSchema);
-            var json = ClrEncodeAndDecode((Coordinates?)null, schema);
+            var json = ClrEncodeAndDecode(null, schema);
             Assert.IsNull(json);
         }
 
@@ -1091,7 +1091,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrIntRoundtrip()
         {
             var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Int);
-            Assert.AreEqual((int)42, ClrRoundtrip((int)42, schema));
+            Assert.AreEqual(42, ClrRoundtrip(42, schema));
         }
 
         [TestMethod]
@@ -1112,7 +1112,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrFloatRoundtrip()
         {
             var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Float);
-            Assert.AreEqual((float)1.5f, ClrRoundtrip((float)1.5f, schema), 0.001f);
+            Assert.AreEqual(1.5f, ClrRoundtrip(1.5f, schema), 0.001f);
         }
 
         [TestMethod]
@@ -1240,7 +1240,7 @@ namespace Vion.Contracts.Test.Codec
         public void ClrNullablePrimitiveValueRoundtrip()
         {
             var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
-            Assert.AreEqual((double?)3.14, ClrRoundtripNullable<double>(3.14, schema));
+            Assert.AreEqual(3.14, ClrRoundtripNullable<double>(3.14, schema));
         }
 
         [TestMethod]
@@ -1262,7 +1262,7 @@ namespace Vion.Contracts.Test.Codec
                                                                          new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
                                                    ImmutableArray.Create("lat", "lon"));
             var schema = new TR.NullableTypeRef(coordSchema);
-            Assert.AreEqual((Coordinates?)new Coordinates(1, 2), ClrRoundtripNullable<Coordinates>(new Coordinates(1, 2), schema));
+            Assert.AreEqual(new Coordinates(1, 2), ClrRoundtripNullable<Coordinates>(new Coordinates(1, 2), schema));
         }
 
         [TestMethod]
@@ -1273,7 +1273,9 @@ namespace Vion.Contracts.Test.Codec
             var actual = ClrRoundtrip(expected, schema);
             Assert.HasCount(expected.Length, actual);
             for (var i = 0; i < expected.Length; i++)
+            {
                 Assert.AreEqual(expected[i], actual[i]);
+            }
         }
 
         [TestMethod]
@@ -1288,7 +1290,9 @@ namespace Vion.Contracts.Test.Codec
             var actual = ClrRoundtrip(expected, schema);
             Assert.HasCount(expected.Length, actual);
             for (var i = 0; i < expected.Length; i++)
+            {
                 Assert.AreEqual(expected[i], actual[i]);
+            }
         }
 
         [TestMethod]
@@ -1299,7 +1303,9 @@ namespace Vion.Contracts.Test.Codec
             var actual = ClrRoundtrip(expected, schema);
             Assert.HasCount(expected.Length, actual);
             for (var i = 0; i < expected.Length; i++)
+            {
                 Assert.AreEqual(expected[i], actual[i]);
+            }
         }
 
         [TestMethod]
@@ -1310,7 +1316,9 @@ namespace Vion.Contracts.Test.Codec
             var actual = ClrRoundtrip(expected, schema);
             Assert.HasCount(expected.Length, actual);
             for (var i = 0; i < expected.Length; i++)
+            {
                 Assert.AreEqual(expected[i], actual[i]);
+            }
         }
 
         [TestMethod]

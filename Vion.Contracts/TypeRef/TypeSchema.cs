@@ -14,7 +14,7 @@ namespace Vion.Contracts.TypeRef
     /// <remarks>
     ///     <para>
     ///         Custom <see cref="Equals(TypeSchema?)" /> and <see cref="GetHashCode" /> are required because
-    ///         <see cref="ImmutableDictionary{TKey, TValue}" /> uses reference equality by default. The
+    ///         <see cref="ImmutableDictionary{TKey,TValue}" /> uses reference equality by default. The
     ///         constructor rejects null <see cref="StructFieldAnnotations" /> so invalid instances cannot
     ///         exist.
     ///     </para>

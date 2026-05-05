@@ -23,9 +23,7 @@ namespace Vion.Contracts.TypeRef
 
         public bool IsEmpty
         {
-            get =>
-                Title is null && Description is null && Unit is null
-                && Minimum is null && Maximum is null && !ReadOnly;
+            get => Title is null && Description is null && Unit is null && Minimum is null && Maximum is null && !ReadOnly;
         }
     }
 }

@@ -22,6 +22,17 @@ namespace Vion.Contracts.Codec
     /// </summary>
     public static class PropertyValueCodec
     {
+        private static readonly ConcurrentDictionary<Type, MethodInfo> BuildImmutableArrayCache = new();
+
+        private static readonly Func<Type, MethodInfo> BuildImmutableArrayMethodFactory = elementType =>
+                                                                                              typeof(ImmutableArray).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                                                                                                                    .Single(m => m.Name == nameof(ImmutableArray.Create) &&
+                                                                                                                        m.IsGenericMethodDefinition &&
+                                                                                                                        m.GetGenericArguments().Length == 1 &&
+                                                                                                                        m.GetParameters().Length == 1 &&
+                                                                                                                        m.GetParameters()[0].ParameterType.IsArray)
+                                                                                                                    .MakeGenericMethod(elementType);
+
         /// <summary>
         ///     Decodes a serialized <c>PropertyValue</c> FlatBuffer into a JSON value.
         ///     Returns <c>null</c> when the union payload is <c>NONE</c> (the wire encoding of a null value).
@@ -64,10 +75,10 @@ namespace Vion.Contracts.Codec
 
         /// <summary>
         ///     Decodes a serialized <c>PropertyValue</c> FlatBuffer into a CLR value of
-        ///     <paramref name="targetClrType"/>, using the schema <paramref name="type"/> to bridge
+        ///     <paramref name="targetClrType" />, using the schema <paramref name="type" /> to bridge
         ///     numeric precision narrowing, enum name→value, struct constructor matching, and
-        ///     <see cref="ImmutableArray{T}"/> construction. Returns <c>null</c> when the wire
-        ///     payload is <c>NONE</c> and <paramref name="type"/> is <see cref="TR.NullableTypeRef"/>.
+        ///     <see cref="ImmutableArray{T}" /> construction. Returns <c>null</c> when the wire
+        ///     payload is <c>NONE</c> and <paramref name="type" /> is <see cref="TR.NullableTypeRef" />.
         /// </summary>
         public static object? FlatBufferToClr(ReadOnlySpan<byte> bytes, TR.TypeRef type, Type targetClrType)
         {
@@ -75,18 +86,54 @@ namespace Vion.Contracts.Codec
             return JsonToClr(json, type, targetClrType);
         }
 
+        // ── Validation ────────────────────────────────────────────────────────
+
+        /// <summary>
+        ///     Validates <paramref name="json" /> against <paramref name="schema" />, returning every
+        ///     mismatch in <see cref="ValidationResult.Errors" />. Checks structural shape (JSON token
+        ///     vs <c>TypeRef</c>), numeric range (<see cref="TR.TypeAnnotations.Minimum" /> /
+        ///     <see cref="TR.TypeAnnotations.Maximum" />), enum membership
+        ///     (<see cref="TR.EnumTypeRef.Members" />), required struct fields, and the property-level
+        ///     <see cref="TR.TypeAnnotations.ReadOnly" /> guard. Does not throw on validation failure —
+        ///     callers inspect <see cref="ValidationResult.IsValid" />.
+        /// </summary>
+        public static ValidationResult ValidateJson(JsonNode? json, TR.TypeSchema schema)
+        {
+            var errors = new List<string>();
+
+            // ReadOnly is a property-level guard: when true, any incoming Set is rejected outright.
+            if (schema.Annotations.ReadOnly)
+            {
+                errors.Add("$: property is read-only.");
+                return new ValidationResult(false, errors.ToImmutableArray());
+            }
+
+            Validate(json,
+                     schema.Type,
+                     schema.Annotations,
+                     schema.StructFieldAnnotations,
+                     "$",
+                     errors);
+            return errors.Count == 0 ? ValidationResult.Valid : new ValidationResult(false, errors.ToImmutableArray());
+        }
+
         private static object? JsonToClr(JsonNode? json, TR.TypeRef type, Type targetClrType)
         {
             if (type is TR.NullableTypeRef n)
             {
-                if (json is null) return null;
+                if (json is null)
+                {
+                    return null;
+                }
 
                 var inner = Nullable.GetUnderlyingType(targetClrType) ?? targetClrType;
                 return JsonToClr(json, n.Inner, inner);
             }
 
             if (json is null)
+            {
                 throw new PropertyValueDecodeException($"FlatBufferToClr: null wire value but schema '{type.GetType().Name}' is not nullable.");
+            }
 
             return type switch
             {
@@ -98,8 +145,9 @@ namespace Vion.Contracts.Codec
             };
         }
 
-        private static object JsonToClrPrimitive(JsonNode json, TR.PrimitiveTypeRef p, Type targetClrType) =>
-            p.Kind switch
+        private static object JsonToClrPrimitive(JsonNode json, TR.PrimitiveTypeRef p, Type targetClrType)
+        {
+            return p.Kind switch
             {
                 TR.PrimitiveKind.Bool => json.GetValue<bool>(),
                 TR.PrimitiveKind.String => json.GetValue<string>(),
@@ -119,23 +167,35 @@ namespace Vion.Contracts.Codec
 
                 _ => throw new PropertyValueDecodeException($"FlatBufferToClr: unknown PrimitiveKind '{p.Kind}'."),
             };
+        }
 
-        private static byte RangeCheckedByte(long v) =>
-            v is >= byte.MinValue and <= byte.MaxValue ? (byte)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for byte (0..255).");
+        private static byte RangeCheckedByte(long v)
+        {
+            return v is >= byte.MinValue and <= byte.MaxValue ? (byte)v :
+                       throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for byte (0..255).");
+        }
 
-        private static ushort RangeCheckedUShort(long v) =>
-            v is >= ushort.MinValue and <= ushort.MaxValue ? (ushort)v :
-                throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for ushort (0..65535).");
+        private static ushort RangeCheckedUShort(long v)
+        {
+            return v is >= ushort.MinValue and <= ushort.MaxValue ? (ushort)v :
+                       throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for ushort (0..65535).");
+        }
 
-        private static uint RangeCheckedUInt(long v) =>
-            v is >= 0 and <= uint.MaxValue ? (uint)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for uint (0..4294967295).");
+        private static uint RangeCheckedUInt(long v)
+        {
+            return v is >= 0 and <= uint.MaxValue ? (uint)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for uint (0..4294967295).");
+        }
 
-        private static short RangeCheckedShort(long v) =>
-            v is >= short.MinValue and <= short.MaxValue ? (short)v :
-                throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for short (-32768..32767).");
+        private static short RangeCheckedShort(long v)
+        {
+            return v is >= short.MinValue and <= short.MaxValue ? (short)v :
+                       throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for short (-32768..32767).");
+        }
 
-        private static int RangeCheckedInt(long v) =>
-            v is >= int.MinValue and <= int.MaxValue ? (int)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for int.");
+        private static int RangeCheckedInt(long v)
+        {
+            return v is >= int.MinValue and <= int.MaxValue ? (int)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for int.");
+        }
 
         private static DateTime ParseDateTime(string s)
         {
@@ -146,7 +206,9 @@ namespace Vion.Contracts.Codec
         private static object JsonToClrStruct(JsonNode json, TR.StructTypeRef s, Type targetClrType)
         {
             if (json is not JsonObject obj)
+            {
                 throw new PropertyValueDecodeException($"FlatBufferToClr: expected JSON object for struct '{s.Title}', got '{json.GetType().Name}'.");
+            }
 
             var ctor = SelectStructConstructor(targetClrType, s);
             var ctorParams = ctor.GetParameters();
@@ -161,7 +223,9 @@ namespace Vion.Contracts.Codec
                 if (!obj.TryGetPropertyValue(schemaFieldName, out var fieldJson))
                 {
                     if (s.Required.Contains(schemaFieldName))
+                    {
                         throw new PropertyValueDecodeException($"FlatBufferToClr: required field '{schemaFieldName}' missing on struct '{s.Title}'.");
+                    }
 
                     args[i] = null;
                     continue;
@@ -180,43 +244,46 @@ namespace Vion.Contracts.Codec
             var ctors = targetClrType.GetConstructors();
             var matching = ctors.Where(c => c.GetParameters().Length == s.Fields.Length).ToArray();
             if (matching.Length == 0)
+            {
                 throw new
                     PropertyValueDecodeException($"FlatBufferToClr: '{targetClrType.FullName}' has no public constructor with {s.Fields.Length} parameters (schema '{s.Title}').");
+            }
+
             if (matching.Length > 1)
+            {
                 throw new
                     PropertyValueDecodeException($"FlatBufferToClr: '{targetClrType.FullName}' has multiple public constructors with {s.Fields.Length} parameters; cannot disambiguate against schema '{s.Title}'.");
+            }
 
             return matching[0];
         }
 
-        private static string PascalToCamel(string pascal) => string.IsNullOrEmpty(pascal) ? pascal : char.ToLowerInvariant(pascal[0]) + pascal[1..];
+        private static string PascalToCamel(string pascal)
+        {
+            return string.IsNullOrEmpty(pascal) ? pascal : char.ToLowerInvariant(pascal[0]) + pascal[1..];
+        }
 
         private static object JsonToClrArray(JsonNode json, TR.ArrayTypeRef a, Type targetClrType)
         {
             if (json is not JsonArray ja)
+            {
                 throw new PropertyValueDecodeException($"FlatBufferToClr: expected JSON array, got '{json.GetType().Name}'.");
+            }
 
             if (!targetClrType.IsGenericType || targetClrType.GetGenericTypeDefinition() != typeof(ImmutableArray<>))
+            {
                 throw new PropertyValueDecodeException($"FlatBufferToClr: ArrayTypeRef requires ImmutableArray<T> as target CLR type; got '{targetClrType.FullName}'.");
+            }
 
             var elementType = targetClrType.GetGenericArguments()[0];
             var elements = Array.CreateInstance(elementType, ja.Count);
             for (var i = 0; i < ja.Count; i++)
+            {
                 elements.SetValue(JsonToClr(ja[i], a.Items, elementType), i);
+            }
 
             return BuildImmutableArrayCache.GetOrAdd(elementType, BuildImmutableArrayMethodFactory).Invoke(null, new object[] { elements })!;
         }
-
-        private static readonly ConcurrentDictionary<Type, MethodInfo> BuildImmutableArrayCache = new();
-
-        private static readonly Func<Type, MethodInfo> BuildImmutableArrayMethodFactory = elementType =>
-                                                                                              typeof(ImmutableArray).GetMethods(BindingFlags.Public | BindingFlags.Static)
-                                                                                                                    .Single(m => m.Name == nameof(ImmutableArray.Create) &&
-                                                                                                                        m.IsGenericMethodDefinition &&
-                                                                                                                        m.GetGenericArguments().Length == 1 &&
-                                                                                                                        m.GetParameters().Length == 1 &&
-                                                                                                                        m.GetParameters()[0].ParameterType.IsArray)
-                                                                                                                    .MakeGenericMethod(elementType);
 
         private static JsonNode? ClrToJson(object? value, TR.TypeRef type)
         {
@@ -224,13 +291,18 @@ namespace Vion.Contracts.Codec
             // (e.g. (object)((int?)null) is null; (object)((int?)42) is 42 boxed as int).
             if (type is TR.NullableTypeRef n)
             {
-                if (value is null) return null;
+                if (value is null)
+                {
+                    return null;
+                }
 
                 return ClrToJson(value, n.Inner);
             }
 
             if (value is null)
+            {
                 throw new PropertyValueDecodeException($"ClrToFlatBuffer: null value is not valid for non-nullable schema type '{type.GetType().Name}'.");
+            }
 
             return type switch
             {
@@ -242,8 +314,9 @@ namespace Vion.Contracts.Codec
             };
         }
 
-        private static JsonNode ClrPrimitiveToJson(object value, TR.PrimitiveTypeRef p) =>
-            p.Kind switch
+        private static JsonNode ClrPrimitiveToJson(object value, TR.PrimitiveTypeRef p)
+        {
+            return p.Kind switch
             {
                 TR.PrimitiveKind.Bool => JsonValue.Create((bool)value)!,
                 TR.PrimitiveKind.String => JsonValue.Create((string)value)!,
@@ -271,8 +344,12 @@ namespace Vion.Contracts.Codec
 
                 _ => throw new PropertyValueDecodeException($"ClrToFlatBuffer: cannot encode CLR value of type '{value.GetType().FullName}' as PrimitiveKind '{p.Kind}'."),
             };
+        }
 
-        private static string CamelToPascal(string camelCase) => string.IsNullOrEmpty(camelCase) ? camelCase : char.ToUpperInvariant(camelCase[0]) + camelCase[1..];
+        private static string CamelToPascal(string camelCase)
+        {
+            return string.IsNullOrEmpty(camelCase) ? camelCase : char.ToUpperInvariant(camelCase[0]) + camelCase[1..];
+        }
 
         private static JsonObject ClrStructToJson(object value, TR.StructTypeRef s)
         {
@@ -294,11 +371,16 @@ namespace Vion.Contracts.Codec
         private static JsonArray ClrArrayToJson(object value, TR.ArrayTypeRef a)
         {
             if (value is not IEnumerable enumerable)
+            {
                 throw new PropertyValueDecodeException($"ClrToFlatBuffer: expected IEnumerable for ArrayTypeRef, got '{value.GetType().FullName}'.");
+            }
 
             var arr = new JsonArray();
             foreach (var item in enumerable)
+            {
                 arr.Add(ClrToJson(item, a.Items));
+            }
+
             return arr;
         }
 
@@ -687,37 +769,6 @@ namespace Vion.Contracts.Codec
             return (ValuePayload.StructArray, arr.Value);
         }
 
-        // ── Validation ────────────────────────────────────────────────────────
-
-        /// <summary>
-        ///     Validates <paramref name="json"/> against <paramref name="schema"/>, returning every
-        ///     mismatch in <see cref="ValidationResult.Errors"/>. Checks structural shape (JSON token
-        ///     vs <c>TypeRef</c>), numeric range (<see cref="TR.TypeAnnotations.Minimum"/> /
-        ///     <see cref="TR.TypeAnnotations.Maximum"/>), enum membership
-        ///     (<see cref="TR.EnumTypeRef.Members"/>), required struct fields, and the property-level
-        ///     <see cref="TR.TypeAnnotations.ReadOnly"/> guard. Does not throw on validation failure —
-        ///     callers inspect <see cref="ValidationResult.IsValid"/>.
-        /// </summary>
-        public static ValidationResult ValidateJson(JsonNode? json, TR.TypeSchema schema)
-        {
-            var errors = new List<string>();
-
-            // ReadOnly is a property-level guard: when true, any incoming Set is rejected outright.
-            if (schema.Annotations.ReadOnly)
-            {
-                errors.Add("$: property is read-only.");
-                return new ValidationResult(false, errors.ToImmutableArray());
-            }
-
-            Validate(json,
-                     schema.Type,
-                     schema.Annotations,
-                     schema.StructFieldAnnotations,
-                     "$",
-                     errors);
-            return errors.Count == 0 ? ValidationResult.Valid : new ValidationResult(false, errors.ToImmutableArray());
-        }
-
         private static void Validate(JsonNode? json,
                                      TR.TypeRef type,
                                      TR.TypeAnnotations annot,
@@ -727,7 +778,10 @@ namespace Vion.Contracts.Codec
         {
             if (type is TR.NullableTypeRef n)
             {
-                if (json is null) return; // null is valid for nullable
+                if (json is null)
+                {
+                    return; // null is valid for nullable
+                }
 
                 Validate(json,
                          n.Inner,
@@ -776,11 +830,17 @@ namespace Vion.Contracts.Codec
             {
                 case TR.PrimitiveKind.Bool:
                     if (!jv.TryGetValue<bool>(out _))
+                    {
                         errors.Add($"{path}: expected JSON bool for PrimitiveKind 'Bool', got '{jv}'.");
+                    }
+
                     break;
                 case TR.PrimitiveKind.String:
                     if (!jv.TryGetValue<string>(out _))
+                    {
                         errors.Add($"{path}: expected JSON string for PrimitiveKind 'String', got '{jv}'.");
+                    }
+
                     break;
                 case TR.PrimitiveKind.Byte:
                 case TR.PrimitiveKind.Short:
@@ -809,7 +869,10 @@ namespace Vion.Contracts.Codec
                     break;
                 case TR.PrimitiveKind.DateTime:
                     if (!jv.TryGetValue<string>(out var dts) || !DateTimeOffset.TryParse(dts, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
+                    {
                         errors.Add($"{path}: expected RFC 3339 / ISO 8601 string for PrimitiveKind 'DateTime', got '{jv}'.");
+                    }
+
                     break;
                 case TR.PrimitiveKind.Duration:
                     if (!jv.TryGetValue<string>(out var ds))
@@ -838,24 +901,31 @@ namespace Vion.Contracts.Codec
         {
             var (min, max) = kind switch
             {
-                TR.PrimitiveKind.Byte => ((long)byte.MinValue, (long)byte.MaxValue),
-                TR.PrimitiveKind.UShort => ((long)ushort.MinValue, (long)ushort.MaxValue),
-                TR.PrimitiveKind.UInt => (0L, (long)uint.MaxValue),
-                TR.PrimitiveKind.Short => ((long)short.MinValue, (long)short.MaxValue),
+                TR.PrimitiveKind.Byte => (byte.MinValue, byte.MaxValue),
+                TR.PrimitiveKind.UShort => (ushort.MinValue, ushort.MaxValue),
+                TR.PrimitiveKind.UInt => (0L, uint.MaxValue),
+                TR.PrimitiveKind.Short => (short.MinValue, short.MaxValue),
                 TR.PrimitiveKind.Int => ((long)int.MinValue, (long)int.MaxValue),
                 TR.PrimitiveKind.Long => (long.MinValue, long.MaxValue),
-                _ => (long.MinValue, long.MaxValue)
+                _ => (long.MinValue, long.MaxValue),
             };
             if (v < min || v > max)
+            {
                 errors.Add($"{path}: integer {v} is out of range for PrimitiveKind '{kind}' ({min}..{max}).");
+            }
         }
 
         private static void CheckMinMax(double v, TR.TypeAnnotations annot, string path, List<string> errors)
         {
             if (annot.Minimum is double min && v < min)
+            {
                 errors.Add($"{path}: value {v} is below minimum {min}.");
+            }
+
             if (annot.Maximum is double max && v > max)
+            {
                 errors.Add($"{path}: value {v} is above maximum {max}.");
+            }
         }
 
         private static void ValidateEnum(JsonNode json, TR.EnumTypeRef e, string path, List<string> errors)
@@ -867,7 +937,9 @@ namespace Vion.Contracts.Codec
             }
 
             if (!e.Members.Contains(name))
+            {
                 errors.Add($"{path}: '{name}' is not a member of enum '{e.Title}' (allowed: {string.Join(", ", e.Members)}).");
+            }
         }
 
         private static void ValidateStruct(JsonNode json, TR.StructTypeRef s, ImmutableDictionary<string, TR.TypeAnnotations> fieldAnnotations, string path, List<string> errors)
@@ -882,14 +954,18 @@ namespace Vion.Contracts.Codec
             foreach (var requiredName in s.Required)
             {
                 if (!obj.ContainsKey(requiredName))
+                {
                     errors.Add($"{path}: required field '{requiredName}' missing on struct '{s.Title}'.");
+                }
             }
 
             // Validate each present field (against schema's known fields)
             foreach (var field in s.Fields)
             {
                 if (!obj.TryGetPropertyValue(field.Name, out var fieldJson))
+                {
                     continue; // already reported above if required; silently OK if optional
+                }
 
                 var fieldAnnot = fieldAnnotations.TryGetValue(field.Name, out var fa) ? fa : TR.TypeAnnotations.None;
                 Validate(fieldJson,
@@ -904,7 +980,9 @@ namespace Vion.Contracts.Codec
             foreach (var kvp in obj)
             {
                 if (!s.Fields.Any(f => f.Name == kvp.Key))
+                {
                     errors.Add($"{path}: unknown field '{kvp.Key}' on struct '{s.Title}' (additionalProperties not allowed).");
+                }
             }
         }
 
@@ -917,12 +995,14 @@ namespace Vion.Contracts.Codec
             }
 
             for (var i = 0; i < ja.Count; i++)
+            {
                 Validate(ja[i],
                          a.Items,
                          TR.TypeAnnotations.None,
                          fieldAnnotations,
                          $"{path}[{i}]",
                          errors);
+            }
         }
     }
 }

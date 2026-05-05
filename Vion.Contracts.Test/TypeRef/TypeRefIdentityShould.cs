@@ -149,7 +149,7 @@ namespace Vion.Contracts.Test.TypeRef
         {
             var primitive = new PrimitiveTypeRef(PrimitiveKind.Double);
             var enumRef = new EnumTypeRef("Double", ImmutableArray.Create("A"));
-            Assert.AreNotEqual<Vion.Contracts.TypeRef.TypeRef>(primitive, enumRef);
+            Assert.AreNotEqual<Contracts.TypeRef.TypeRef>(primitive, enumRef);
         }
     }
 }
