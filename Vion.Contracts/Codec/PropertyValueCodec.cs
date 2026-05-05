@@ -1,7 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Xml;
 using Google.FlatBuffers;
@@ -57,6 +61,162 @@ namespace Vion.Contracts.Codec
             var json = ClrToJson(value, type);
             return JsonToFlatBuffer(json, type);
         }
+
+        /// <summary>
+        ///     Decodes a serialized <c>PropertyValue</c> FlatBuffer into a CLR value of
+        ///     <paramref name="targetClrType"/>, using the schema <paramref name="type"/> to bridge
+        ///     numeric precision narrowing, enum name→value, struct constructor matching, and
+        ///     <see cref="ImmutableArray{T}"/> construction. Returns <c>null</c> when the wire
+        ///     payload is <c>NONE</c> and <paramref name="type"/> is <see cref="TR.NullableTypeRef"/>.
+        /// </summary>
+        public static object? FlatBufferToClr(ReadOnlySpan<byte> bytes, TR.TypeRef type, Type targetClrType)
+        {
+            var json = FlatBufferToJson(bytes);
+            return JsonToClr(json, type, targetClrType);
+        }
+
+        private static object? JsonToClr(JsonNode? json, TR.TypeRef type, Type targetClrType)
+        {
+            if (type is TR.NullableTypeRef n)
+            {
+                if (json is null) return null;
+
+                var inner = Nullable.GetUnderlyingType(targetClrType) ?? targetClrType;
+                return JsonToClr(json, n.Inner, inner);
+            }
+
+            if (json is null)
+                throw new PropertyValueDecodeException($"FlatBufferToClr: null wire value but schema '{type.GetType().Name}' is not nullable.");
+
+            return type switch
+            {
+                TR.PrimitiveTypeRef p => JsonToClrPrimitive(json, p, targetClrType),
+                TR.EnumTypeRef _ => EnumNameCache.Parse(targetClrType, json.GetValue<string>()),
+                TR.StructTypeRef s => JsonToClrStruct(json, s, targetClrType),
+                TR.ArrayTypeRef a => JsonToClrArray(json, a, targetClrType),
+                _ => throw new PropertyValueDecodeException($"FlatBufferToClr: unknown schema type '{type.GetType().Name}'."),
+            };
+        }
+
+        private static object JsonToClrPrimitive(JsonNode json, TR.PrimitiveTypeRef p, Type targetClrType) =>
+            p.Kind switch
+            {
+                TR.PrimitiveKind.Bool => json.GetValue<bool>(),
+                TR.PrimitiveKind.String => json.GetValue<string>(),
+
+                TR.PrimitiveKind.Byte => RangeCheckedByte(json.GetValue<long>()),
+                TR.PrimitiveKind.UShort => RangeCheckedUShort(json.GetValue<long>()),
+                TR.PrimitiveKind.UInt => RangeCheckedUInt(json.GetValue<long>()),
+                TR.PrimitiveKind.Short => RangeCheckedShort(json.GetValue<long>()),
+                TR.PrimitiveKind.Int => RangeCheckedInt(json.GetValue<long>()),
+                TR.PrimitiveKind.Long => json.GetValue<long>(),
+
+                TR.PrimitiveKind.Float => (float)json.GetValue<double>(),
+                TR.PrimitiveKind.Double => json.GetValue<double>(),
+
+                TR.PrimitiveKind.DateTime => ParseDateTime(json.GetValue<string>()),
+                TR.PrimitiveKind.Duration => XmlConvert.ToTimeSpan(json.GetValue<string>()),
+
+                _ => throw new PropertyValueDecodeException($"FlatBufferToClr: unknown PrimitiveKind '{p.Kind}'."),
+            };
+
+        private static byte RangeCheckedByte(long v) =>
+            v is >= byte.MinValue and <= byte.MaxValue ? (byte)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for byte (0..255).");
+
+        private static ushort RangeCheckedUShort(long v) =>
+            v is >= ushort.MinValue and <= ushort.MaxValue ? (ushort)v :
+                throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for ushort (0..65535).");
+
+        private static uint RangeCheckedUInt(long v) =>
+            v is >= 0 and <= uint.MaxValue ? (uint)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for uint (0..4294967295).");
+
+        private static short RangeCheckedShort(long v) =>
+            v is >= short.MinValue and <= short.MaxValue ? (short)v :
+                throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for short (-32768..32767).");
+
+        private static int RangeCheckedInt(long v) =>
+            v is >= int.MinValue and <= int.MaxValue ? (int)v : throw new PropertyValueDecodeException($"FlatBufferToClr: long value {v} out of range for int.");
+
+        private static DateTime ParseDateTime(string s)
+        {
+            var dto = DateTimeOffset.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            return dto.UtcDateTime;
+        }
+
+        private static object JsonToClrStruct(JsonNode json, TR.StructTypeRef s, Type targetClrType)
+        {
+            if (json is not JsonObject obj)
+                throw new PropertyValueDecodeException($"FlatBufferToClr: expected JSON object for struct '{s.Title}', got '{json.GetType().Name}'.");
+
+            var ctor = SelectStructConstructor(targetClrType, s);
+            var ctorParams = ctor.GetParameters();
+            var args = new object?[ctorParams.Length];
+
+            for (var i = 0; i < ctorParams.Length; i++)
+            {
+                var paramName = ctorParams[i].Name ??
+                                throw new PropertyValueDecodeException($"FlatBufferToClr: constructor parameter {i} on '{targetClrType.FullName}' has no name.");
+                var schemaFieldName = PascalToCamel(paramName);
+
+                if (!obj.TryGetPropertyValue(schemaFieldName, out var fieldJson))
+                {
+                    if (s.Required.Contains(schemaFieldName))
+                        throw new PropertyValueDecodeException($"FlatBufferToClr: required field '{schemaFieldName}' missing on struct '{s.Title}'.");
+
+                    args[i] = null;
+                    continue;
+                }
+
+                var schemaField = s.Fields.FirstOrDefault(f => f.Name == schemaFieldName) ??
+                                  throw new PropertyValueDecodeException($"FlatBufferToClr: schema for struct '{s.Title}' has no field '{schemaFieldName}'.");
+                args[i] = JsonToClr(fieldJson, schemaField.Type, ctorParams[i].ParameterType);
+            }
+
+            return ctor.Invoke(args);
+        }
+
+        private static ConstructorInfo SelectStructConstructor(Type targetClrType, TR.StructTypeRef s)
+        {
+            var ctors = targetClrType.GetConstructors();
+            var matching = ctors.Where(c => c.GetParameters().Length == s.Fields.Length).ToArray();
+            if (matching.Length == 0)
+                throw new
+                    PropertyValueDecodeException($"FlatBufferToClr: '{targetClrType.FullName}' has no public constructor with {s.Fields.Length} parameters (schema '{s.Title}').");
+            if (matching.Length > 1)
+                throw new
+                    PropertyValueDecodeException($"FlatBufferToClr: '{targetClrType.FullName}' has multiple public constructors with {s.Fields.Length} parameters; cannot disambiguate against schema '{s.Title}'.");
+
+            return matching[0];
+        }
+
+        private static string PascalToCamel(string pascal) => string.IsNullOrEmpty(pascal) ? pascal : char.ToLowerInvariant(pascal[0]) + pascal[1..];
+
+        private static object JsonToClrArray(JsonNode json, TR.ArrayTypeRef a, Type targetClrType)
+        {
+            if (json is not JsonArray ja)
+                throw new PropertyValueDecodeException($"FlatBufferToClr: expected JSON array, got '{json.GetType().Name}'.");
+
+            if (!targetClrType.IsGenericType || targetClrType.GetGenericTypeDefinition() != typeof(ImmutableArray<>))
+                throw new PropertyValueDecodeException($"FlatBufferToClr: ArrayTypeRef requires ImmutableArray<T> as target CLR type; got '{targetClrType.FullName}'.");
+
+            var elementType = targetClrType.GetGenericArguments()[0];
+            var elements = Array.CreateInstance(elementType, ja.Count);
+            for (var i = 0; i < ja.Count; i++)
+                elements.SetValue(JsonToClr(ja[i], a.Items, elementType), i);
+
+            return BuildImmutableArrayCache.GetOrAdd(elementType, BuildImmutableArrayMethodFactory).Invoke(null, new object[] { elements })!;
+        }
+
+        private static readonly ConcurrentDictionary<Type, MethodInfo> BuildImmutableArrayCache = new();
+
+        private static readonly Func<Type, MethodInfo> BuildImmutableArrayMethodFactory = elementType =>
+                                                                                              typeof(ImmutableArray).GetMethods(BindingFlags.Public | BindingFlags.Static)
+                                                                                                                    .Single(m => m.Name == nameof(ImmutableArray.Create) &&
+                                                                                                                        m.IsGenericMethodDefinition &&
+                                                                                                                        m.GetGenericArguments().Length == 1 &&
+                                                                                                                        m.GetParameters().Length == 1 &&
+                                                                                                                        m.GetParameters()[0].ParameterType.IsArray)
+                                                                                                                    .MakeGenericMethod(elementType);
 
         private static JsonNode? ClrToJson(object? value, TR.TypeRef type)
         {

@@ -1050,6 +1050,291 @@ namespace Vion.Contracts.Test.Codec
             Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(input, schema));
         }
 
+        // ── CLR round-trip tests (ClrToFlatBuffer → FlatBufferToClr) ─────────
+
+        [TestMethod]
+        public void ClrBoolRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Bool);
+            Assert.IsTrue(ClrRoundtrip(true, schema));
+        }
+
+        [TestMethod]
+        public void ClrStringRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.String);
+            Assert.AreEqual("hello clr decode", ClrRoundtrip("hello clr decode", schema));
+        }
+
+        [TestMethod]
+        public void ClrByteRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Byte);
+            Assert.AreEqual((byte)200, ClrRoundtrip((byte)200, schema));
+        }
+
+        [TestMethod]
+        public void ClrShortRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Short);
+            Assert.AreEqual((short)-1234, ClrRoundtrip((short)-1234, schema));
+        }
+
+        [TestMethod]
+        public void ClrUShortRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UShort);
+            Assert.AreEqual((ushort)50000, ClrRoundtrip((ushort)50000, schema));
+        }
+
+        [TestMethod]
+        public void ClrIntRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Int);
+            Assert.AreEqual((int)42, ClrRoundtrip((int)42, schema));
+        }
+
+        [TestMethod]
+        public void ClrUIntRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UInt);
+            Assert.AreEqual(4_000_000_000u, ClrRoundtrip(4_000_000_000u, schema));
+        }
+
+        [TestMethod]
+        public void ClrLongRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            Assert.AreEqual(9876543210L, ClrRoundtrip(9876543210L, schema));
+        }
+
+        [TestMethod]
+        public void ClrFloatRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Float);
+            Assert.AreEqual((float)1.5f, ClrRoundtrip((float)1.5f, schema), 0.001f);
+        }
+
+        [TestMethod]
+        public void ClrDoubleRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double);
+            Assert.AreEqual(3.14, ClrRoundtrip(3.14, schema), 1e-9);
+        }
+
+        [TestMethod]
+        public void ClrDateTimeRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.DateTime);
+            var dt = new DateTime(2024,
+                                  6,
+                                  3,
+                                  12,
+                                  0,
+                                  0,
+                                  DateTimeKind.Utc);
+            Assert.AreEqual(dt, ClrRoundtrip(dt, schema));
+        }
+
+        [TestMethod]
+        public void ClrTimeSpanRoundtrip()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Duration);
+            Assert.AreEqual(TimeSpan.FromMinutes(90), ClrRoundtrip(TimeSpan.FromMinutes(90), schema));
+        }
+
+        [TestMethod]
+        public void ClrByteOutOfRangeThrows()
+        {
+            var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            var byteSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Byte);
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(300L), longSchema);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, byteSchema, typeof(byte)));
+        }
+
+        [TestMethod]
+        public void ClrUShortOutOfRangeThrows()
+        {
+            var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            var ushortSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UShort);
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(70000L), longSchema);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, ushortSchema, typeof(ushort)));
+        }
+
+        [TestMethod]
+        public void ClrUIntNegativeThrows()
+        {
+            var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            var uintSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UInt);
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(-1L), longSchema);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, uintSchema, typeof(uint)));
+        }
+
+        [TestMethod]
+        public void ClrEnumRoundtrip()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            Assert.AreEqual(AlarmState.Warning, ClrRoundtrip(AlarmState.Warning, schema));
+        }
+
+        [TestMethod]
+        public void ClrUnknownEnumNameThrows()
+        {
+            var enumSchema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create("NotAMember"), enumSchema);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, enumSchema, typeof(AlarmState)));
+        }
+
+        [TestMethod]
+        public void ClrEnumCacheReused()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            Assert.AreEqual(AlarmState.Ok, ClrRoundtrip(AlarmState.Ok, schema));
+            Assert.AreEqual(AlarmState.Warning, ClrRoundtrip(AlarmState.Warning, schema));
+            Assert.AreEqual(AlarmState.Critical, ClrRoundtrip(AlarmState.Critical, schema));
+        }
+
+        [TestMethod]
+        public void ClrStructRoundtrip()
+        {
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon"));
+            Assert.AreEqual(new Coordinates(47.3, 8.5), ClrRoundtrip(new Coordinates(47.3, 8.5), schema));
+        }
+
+        [TestMethod]
+        public void ClrStruct3DRoundtrip()
+        {
+            var schema = new TR.StructTypeRef("Coordinates3D",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("altitude", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon", "altitude"));
+            Assert.AreEqual(new Coordinates3D(47.3, 8.5, 423.0), ClrRoundtrip(new Coordinates3D(47.3, 8.5, 423.0), schema));
+        }
+
+        [TestMethod]
+        public void ClrStructFieldOrderIndependent()
+        {
+            // Encode with fields in non-schema order (lon before lat) to verify name-based matching
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon"));
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonNode.Parse("{\"lon\":8.5,\"lat\":47.3}"), schema);
+            var result = (Coordinates)PropertyValueCodec.FlatBufferToClr(bytes, schema, typeof(Coordinates))!;
+            Assert.AreEqual(47.3, result.Lat, 1e-9);
+            Assert.AreEqual(8.5, result.Lon, 1e-9);
+        }
+
+        [TestMethod]
+        public void ClrNullablePrimitiveNullRoundtrip()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            Assert.IsNull(ClrRoundtripNullable<double>(null, schema));
+        }
+
+        [TestMethod]
+        public void ClrNullablePrimitiveValueRoundtrip()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            Assert.AreEqual((double?)3.14, ClrRoundtripNullable<double>(3.14, schema));
+        }
+
+        [TestMethod]
+        public void ClrNullableStructNullRoundtrip()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.NullableTypeRef(coordSchema);
+            Assert.IsNull(ClrRoundtripNullable<Coordinates>(null, schema));
+        }
+
+        [TestMethod]
+        public void ClrNullableStructValueRoundtrip()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.NullableTypeRef(coordSchema);
+            Assert.AreEqual((Coordinates?)new Coordinates(1, 2), ClrRoundtripNullable<Coordinates>(new Coordinates(1, 2), schema));
+        }
+
+        [TestMethod]
+        public void ClrImmutableArrayLongRoundtrip()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var expected = ImmutableArray.Create(1L, 2L, 3L);
+            var actual = ClrRoundtrip(expected, schema);
+            Assert.HasCount(expected.Length, actual);
+            for (var i = 0; i < expected.Length; i++)
+                Assert.AreEqual(expected[i], actual[i]);
+        }
+
+        [TestMethod]
+        public void ClrImmutableArrayStructRoundtrip()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.ArrayTypeRef(coordSchema);
+            var expected = ImmutableArray.Create(new Coordinates(1, 2), new Coordinates(3, 4));
+            var actual = ClrRoundtrip(expected, schema);
+            Assert.HasCount(expected.Length, actual);
+            for (var i = 0; i < expected.Length; i++)
+                Assert.AreEqual(expected[i], actual[i]);
+        }
+
+        [TestMethod]
+        public void ClrImmutableArrayEnumRoundtrip()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var expected = ImmutableArray.Create(AlarmState.Ok, AlarmState.Warning);
+            var actual = ClrRoundtrip(expected, schema);
+            Assert.HasCount(expected.Length, actual);
+            for (var i = 0; i < expected.Length; i++)
+                Assert.AreEqual(expected[i], actual[i]);
+        }
+
+        [TestMethod]
+        public void ClrImmutableArrayNullableLongRoundtrip()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long)));
+            var expected = ImmutableArray.Create<long?>(1L, null, 2L);
+            var actual = ClrRoundtrip(expected, schema);
+            Assert.HasCount(expected.Length, actual);
+            for (var i = 0; i < expected.Length; i++)
+                Assert.AreEqual(expected[i], actual[i]);
+        }
+
+        [TestMethod]
+        public void ClrEmptyImmutableArrayRoundtrip()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var expected = ImmutableArray<long>.Empty;
+            var actual = ClrRoundtrip(expected, schema);
+            Assert.IsEmpty(actual);
+        }
+
+        private static T ClrRoundtrip<T>(T value, TR.TypeRef type)
+        {
+            var bytes = PropertyValueCodec.ClrToFlatBuffer(value, type);
+            return (T)PropertyValueCodec.FlatBufferToClr(bytes, type, typeof(T))!;
+        }
+
+        private static T? ClrRoundtripNullable<T>(T? value, TR.TypeRef type)
+            where T : struct
+        {
+            var bytes = PropertyValueCodec.ClrToFlatBuffer(value, type);
+            return (T?)PropertyValueCodec.FlatBufferToClr(bytes, type, typeof(T?));
+        }
+
         private static byte[] BuildBoolVal(bool v)
         {
             var builder = new FlatBufferBuilder(64);
