@@ -29,10 +29,13 @@ namespace Vion.Contracts.TypeRef
             };
 
             // Annotations are applied centrally here (after dispatch), not inside each Build method.
-            // Build methods that recurse (BuildArray, BuildNullable) pass annotations down so the
-            // recursive BuildSchema call can apply them at the inner level. Build methods that don't
-            // recurse (BuildPrimitive, BuildEnum, BuildStruct) accept only the data they need to
-            // construct the node — annotations are layered on top here.
+            // - BuildPrimitive, BuildEnum, BuildStruct don't recurse — they construct the node and
+            //   ApplyAnnotations layers the annotations on top here.
+            // - BuildArray recurses with (ann, sfa) passed through. The inner BuildSchema applies
+            //   annotations to `items`, and this outer call applies them again to the array node.
+            //   That double-apply is intentional per spec §5.1 (x-unit lives on both array and items).
+            // - BuildNullable recurses with empty (ann, sfa) so annotations are applied exactly once,
+            //   here, on the mutated inner JsonObject — see comment in BuildNullable for rationale.
             ApplyAnnotations(node, annotations);
             return node;
         }
@@ -114,7 +117,15 @@ namespace Vion.Contracts.TypeRef
 
         private static JsonObject BuildNullable(NullableTypeRef n, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
-            var inner = BuildSchema(n.Inner, ann, sfa);
+            // Pass empty annotations / SFA into the recursive BuildSchema. Annotations belong to the
+            // OUTER property-level call site, not the inner unwrapped type — the outer BuildSchema's
+            // ApplyAnnotations runs exactly once on this same JsonObject after we return. If we passed
+            // (ann, sfa) here, ApplyAnnotations would fire twice on the same object (the inner
+            // BuildSchema would apply them, and the outer one would apply them again). Currently a
+            // no-op since §2.13 hasn't landed; setting up the right shape now avoids latent bugs.
+            // Note: BuildArray passes (ann, sfa) through deliberately — the spec §5.1 array convention
+            // wants x-unit etc. on both `items` and the array node, which the double-apply produces.
+            var inner = BuildSchema(n.Inner, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
             if (inner is not JsonObject obj)
             {
                 throw new InvalidOperationException($"Unexpected schema node: {inner.GetType()}");
