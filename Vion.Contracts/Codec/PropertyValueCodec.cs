@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Xml;
@@ -24,6 +25,23 @@ namespace Vion.Contracts.Codec
             var bb = new ByteBuffer(bytes.ToArray());
             var pv = PropertyValue.GetRootAsPropertyValue(bb);
             return DecodePayload(pv);
+        }
+
+        // ── Encode ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        ///     Encodes a JSON value into a serialized <c>PropertyValue</c> FlatBuffer using
+        ///     <paramref name="type" /> to choose the wire variant (e.g. <c>42</c> as Long vs Double,
+        ///     <c>"hi"</c> as String vs DateTime vs enum). Null with a <see cref="TR.NullableTypeRef" />
+        ///     encodes as <c>NONE</c>.
+        /// </summary>
+        public static byte[] JsonToFlatBuffer(JsonNode? json, TR.TypeRef type)
+        {
+            var builder = new FlatBufferBuilder(64);
+            var (payloadType, payloadOffset) = EncodeValue(builder, json, type);
+            var pv = PropertyValue.CreatePropertyValue(builder, payloadType, payloadOffset);
+            builder.Finish(pv.Value);
+            return builder.SizedByteArray();
         }
 
         private static JsonNode? DecodePayload(PropertyValue pv)
@@ -142,48 +160,36 @@ namespace Vion.Contracts.Codec
             return arr;
         }
 
-        // ── Encode ────────────────────────────────────────────────────────────
-
-        /// <summary>
-        ///     Encodes a JSON value into a serialized <c>PropertyValue</c> FlatBuffer using
-        ///     <paramref name="type"/> to choose the wire variant (e.g. <c>42</c> as Long vs Double,
-        ///     <c>"hi"</c> as String vs DateTime vs enum). Null with a <see cref="TR.NullableTypeRef"/>
-        ///     encodes as <c>NONE</c>.
-        /// </summary>
-        public static byte[] JsonToFlatBuffer(JsonNode? json, TR.TypeRef type)
-        {
-            var builder = new FlatBufferBuilder(64);
-            var (payloadType, payloadOffset) = EncodeValue(builder, json, type);
-            var pv = PropertyValue.CreatePropertyValue(builder, payloadType, payloadOffset);
-            builder.Finish(pv.Value);
-            return builder.SizedByteArray();
-        }
-
         private static (ValuePayload PayloadType, int PayloadOffset) EncodeValue(FlatBufferBuilder b, JsonNode? json, TR.TypeRef type)
         {
             if (type is TR.NullableTypeRef n)
             {
                 if (json is null)
+                {
                     return (ValuePayload.NONE, 0);
+                }
 
                 return EncodeValue(b, json, n.Inner);
             }
 
             if (json is null)
+            {
                 throw new PropertyValueDecodeException($"JsonToFlatBuffer: null value is not valid for non-nullable type '{type.GetType().Name}'.");
+            }
 
             return type switch
             {
                 TR.PrimitiveTypeRef p => EncodePrimitive(b, json, p),
                 TR.EnumTypeRef _ => EncodeEnum(b, json),
-
-                // StructTypeRef and ArrayTypeRef are added in the next dispatch
-                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unhandled or not-yet-implemented schema type '{type.GetType().Name}'.")
+                TR.StructTypeRef s => EncodeStruct(b, json, s),
+                TR.ArrayTypeRef a => EncodeArray(b, json, a),
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unknown schema type '{type.GetType().Name}'."),
             };
         }
 
-        private static (ValuePayload, int) EncodePrimitive(FlatBufferBuilder b, JsonNode json, TR.PrimitiveTypeRef p) =>
-            p.Kind switch
+        private static (ValuePayload, int) EncodePrimitive(FlatBufferBuilder b, JsonNode json, TR.PrimitiveTypeRef p)
+        {
+            return p.Kind switch
             {
                 TR.PrimitiveKind.Bool => (ValuePayload.BoolVal, BoolVal.CreateBoolVal(b, json.GetValue<bool>()).Value),
                 TR.PrimitiveKind.String => (ValuePayload.StringVal, StringVal.CreateStringVal(b, b.CreateString(json.GetValue<string>())).Value),
@@ -203,13 +209,224 @@ namespace Vion.Contracts.Codec
 
                 TR.PrimitiveKind.Duration => (ValuePayload.DurationVal, DurationVal.CreateDurationVal(b, XmlConvert.ToTimeSpan(json.GetValue<string>()).Ticks).Value),
 
-                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unknown PrimitiveKind '{p.Kind}'.")
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unknown PrimitiveKind '{p.Kind}'."),
             };
+        }
 
         private static (ValuePayload, int) EncodeEnum(FlatBufferBuilder b, JsonNode json)
         {
             var name = json.GetValue<string>();
             return (ValuePayload.StringVal, StringVal.CreateStringVal(b, b.CreateString(name)).Value);
+        }
+
+        private static (ValuePayload, int) EncodeStruct(FlatBufferBuilder b, JsonNode json, TR.StructTypeRef s)
+        {
+            if (json is not JsonObject obj)
+            {
+                throw new PropertyValueDecodeException($"JsonToFlatBuffer: expected JSON object for struct '{s.Title}', got '{json.GetType().Name}'.");
+            }
+
+            var fieldOffsets = new List<Offset<NamedValue>>(s.Fields.Length);
+            foreach (var field in s.Fields)
+            {
+                if (!obj.TryGetPropertyValue(field.Name, out var fieldJson))
+                {
+                    if (s.Required.Contains(field.Name))
+                    {
+                        throw new PropertyValueDecodeException($"JsonToFlatBuffer: required field '{field.Name}' missing on struct '{s.Title}'.");
+                    }
+
+                    continue;
+                }
+
+                var (innerPayloadType, innerPayloadOffset) = EncodeValue(b, fieldJson, field.Type);
+                var innerPv = PropertyValue.CreatePropertyValue(b, innerPayloadType, innerPayloadOffset);
+                var nameOffset = b.CreateString(field.Name);
+                fieldOffsets.Add(NamedValue.CreateNamedValue(b, nameOffset, innerPv));
+            }
+
+            var fieldsVec = StructVal.CreateFieldsVector(b, fieldOffsets.ToArray());
+            var sv = StructVal.CreateStructVal(b, fieldsVec);
+            return (ValuePayload.StructVal, sv.Value);
+        }
+
+        private static (ValuePayload, int) EncodeArray(FlatBufferBuilder b, JsonNode json, TR.ArrayTypeRef arr)
+        {
+            if (json is not JsonArray ja)
+            {
+                throw new PropertyValueDecodeException($"JsonToFlatBuffer: expected JSON array, got '{json.GetType().Name}'.");
+            }
+
+            var (itemType, allowNullElements) = arr.Items is TR.NullableTypeRef nn ? (nn.Inner, true) : (arr.Items, false);
+
+            if (itemType is TR.ArrayTypeRef)
+            {
+                throw new PropertyValueDecodeException("JsonToFlatBuffer: nested array types are not allowed by the Dale profile.");
+            }
+
+            bool[]? present = null;
+            if (allowNullElements)
+            {
+                present = new bool[ja.Count];
+                var anyNull = false;
+                for (var i = 0; i < ja.Count; i++)
+                {
+                    present[i] = ja[i] is not null;
+                    if (!present[i])
+                    {
+                        anyNull = true;
+                    }
+                }
+
+                if (!anyNull)
+                {
+                    present = null;
+                }
+            }
+            else
+            {
+                for (var i = 0; i < ja.Count; i++)
+                {
+                    if (ja[i] is null)
+                    {
+                        throw new PropertyValueDecodeException($"JsonToFlatBuffer: array element at index {i} is null but item type is not nullable.");
+                    }
+                }
+            }
+
+            return itemType switch
+            {
+                TR.PrimitiveTypeRef p => EncodePrimitiveArray(b, ja, p, present),
+                TR.EnumTypeRef _ => EncodeStringArray(b, ja, present),
+                TR.StructTypeRef s => EncodeStructArray(b, ja, s, present),
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unhandled array item type '{itemType.GetType().Name}'."),
+            };
+        }
+
+        private static (ValuePayload, int) EncodePrimitiveArray(FlatBufferBuilder b, JsonArray ja, TR.PrimitiveTypeRef p, bool[]? present)
+        {
+            return p.Kind switch
+            {
+                TR.PrimitiveKind.Bool => EncodeBoolArray(b, ja, present),
+                TR.PrimitiveKind.Byte or TR.PrimitiveKind.Short or TR.PrimitiveKind.UShort or TR.PrimitiveKind.Int or TR.PrimitiveKind.UInt or TR.PrimitiveKind.Long =>
+                    EncodeLongArray(b, ja, present),
+                TR.PrimitiveKind.Float or TR.PrimitiveKind.Double => EncodeDoubleArray(b, ja, present),
+                TR.PrimitiveKind.String => EncodeStringArray(b, ja, present),
+                TR.PrimitiveKind.DateTime => EncodeDateTimeArray(b, ja, present),
+                TR.PrimitiveKind.Duration => EncodeDurationArray(b, ja, present),
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unknown PrimitiveKind '{p.Kind}'."),
+            };
+        }
+
+        private static (ValuePayload, int) EncodeBoolArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var values = new bool[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                values[i] = present is null || present[i] ? ja[i]!.GetValue<bool>() : false;
+            }
+
+            var valuesOff = BoolArray.CreateValuesVector(b, values);
+            var presentOff = present is null ? default : BoolArray.CreatePresentVector(b, present);
+            var arr = BoolArray.CreateBoolArray(b, valuesOff, presentOff);
+            return (ValuePayload.BoolArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeLongArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var values = new long[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                values[i] = present is null || present[i] ? ja[i]!.GetValue<long>() : 0L;
+            }
+
+            var valuesOff = LongArray.CreateValuesVector(b, values);
+            var presentOff = present is null ? default : LongArray.CreatePresentVector(b, present);
+            var arr = LongArray.CreateLongArray(b, valuesOff, presentOff);
+            return (ValuePayload.LongArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeDoubleArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var values = new double[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                values[i] = present is null || present[i] ? ja[i]!.GetValue<double>() : 0.0;
+            }
+
+            var valuesOff = DoubleArray.CreateValuesVector(b, values);
+            var presentOff = present is null ? default : DoubleArray.CreatePresentVector(b, present);
+            var arr = DoubleArray.CreateDoubleArray(b, valuesOff, presentOff);
+            return (ValuePayload.DoubleArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeStringArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var strOffsets = new StringOffset[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                strOffsets[i] = present is null || present[i] ? b.CreateString(ja[i]!.GetValue<string>()) : b.CreateString("");
+            }
+
+            var valuesOff = StringArray.CreateValuesVector(b, strOffsets);
+            var presentOff = present is null ? default : StringArray.CreatePresentVector(b, present);
+            var arr = StringArray.CreateStringArray(b, valuesOff, presentOff);
+            return (ValuePayload.StringArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeDateTimeArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var values = new long[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                values[i] = present is null || present[i] ?
+                                DateTimeOffset.Parse(ja[i]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUnixTimeMilliseconds() : 0L;
+            }
+
+            var valuesOff = DateTimeArray.CreateUnixMsVector(b, values);
+            var presentOff = present is null ? default : DateTimeArray.CreatePresentVector(b, present);
+            var arr = DateTimeArray.CreateDateTimeArray(b, valuesOff, presentOff);
+            return (ValuePayload.DateTimeArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeDurationArray(FlatBufferBuilder b, JsonArray ja, bool[]? present)
+        {
+            var values = new long[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                values[i] = present is null || present[i] ? XmlConvert.ToTimeSpan(ja[i]!.GetValue<string>()).Ticks : 0L;
+            }
+
+            var valuesOff = DurationArray.CreateTicksVector(b, values);
+            var presentOff = present is null ? default : DurationArray.CreatePresentVector(b, present);
+            var arr = DurationArray.CreateDurationArray(b, valuesOff, presentOff);
+            return (ValuePayload.DurationArray, arr.Value);
+        }
+
+        private static (ValuePayload, int) EncodeStructArray(FlatBufferBuilder b, JsonArray ja, TR.StructTypeRef s, bool[]? present)
+        {
+            var items = new Offset<StructVal>[ja.Count];
+            for (var i = 0; i < ja.Count; i++)
+            {
+                if (present is not null && !present[i])
+                {
+                    items[i] = StructVal.CreateStructVal(b);
+                    continue;
+                }
+
+                var (payloadType, payloadOffset) = EncodeStruct(b, ja[i]!, s);
+                if (payloadType != ValuePayload.StructVal)
+                {
+                    throw new InvalidOperationException("EncodeStruct should always return StructVal.");
+                }
+
+                items[i] = new Offset<StructVal>(payloadOffset);
+            }
+
+            var itemsVec = StructArray.CreateItemsVector(b, items);
+            var presentOff = present is null ? default : StructArray.CreatePresentVector(b, present);
+            var arr = StructArray.CreateStructArray(b, itemsVec, presentOff);
+            return (ValuePayload.StructArray, arr.Value);
         }
     }
 }

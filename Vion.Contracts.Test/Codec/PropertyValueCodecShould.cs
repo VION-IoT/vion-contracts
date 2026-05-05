@@ -475,6 +475,266 @@ namespace Vion.Contracts.Test.Codec
             Assert.AreEqual("NotAMember", rt!.GetValue<string>());
         }
 
+        // ── Struct round-trip tests ───────────────────────────────────────────
+
+        [TestMethod]
+        public void RoundtripStructWithFlatFields()
+        {
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon"));
+            var input = JsonNode.Parse("{\"lat\":47.3,\"lon\":8.5}");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var obj = rt!.AsObject();
+            Assert.AreEqual(47.3, obj["lat"]!.GetValue<double>());
+            Assert.AreEqual(8.5, obj["lon"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void RoundtripStructPreservesFieldOrder()
+        {
+            var schema = new TR.StructTypeRef("Coordinates3D",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("altitude", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon", "altitude"));
+
+            // Input JSON keys in non-schema order
+            var input = JsonNode.Parse("{\"lon\":8.5,\"altitude\":423.0,\"lat\":47.3}");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var keys = rt!.AsObject().Select(kvp => kvp.Key).ToArray();
+            Assert.AreEqual("lat", keys[0]);
+            Assert.AreEqual("lon", keys[1]);
+            Assert.AreEqual("altitude", keys[2]);
+        }
+
+        [TestMethod]
+        public void RoundtripStructWithNullableField()
+        {
+            var schema = new TR.StructTypeRef("X",
+                                              ImmutableArray.Create(new TR.StructField("a", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("b", new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)))),
+                                              ImmutableArray.Create("a", "b"));
+            var input = JsonNode.Parse("{\"a\":1.0,\"b\":null}");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var obj = rt!.AsObject();
+            Assert.AreEqual(1.0, obj["a"]!.GetValue<double>());
+            Assert.IsNull(obj["b"]);
+        }
+
+        [TestMethod]
+        public void ThrowsOnStructMissingRequiredField()
+        {
+            var schema = new TR.StructTypeRef("X",
+                                              ImmutableArray.Create(new TR.StructField("a", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("b", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("a", "b"));
+            var input = JsonNode.Parse("{\"a\":1.0}");
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(input, schema));
+        }
+
+        [TestMethod]
+        public void RoundtripEmptyStructIsEmptyObject()
+        {
+            var schema = new TR.StructTypeRef("Empty", ImmutableArray<TR.StructField>.Empty, ImmutableArray<string>.Empty);
+            var input = JsonNode.Parse("{}");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            Assert.AreEqual(0, rt!.AsObject().Count);
+        }
+
+        // ── Array round-trip tests ────────────────────────────────────────────
+
+        [TestMethod]
+        public void RoundtripBoolArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Bool));
+            var input = JsonNode.Parse("[true,false,true]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.IsTrue(arr[0]!.GetValue<bool>());
+            Assert.IsFalse(arr[1]!.GetValue<bool>());
+            Assert.IsTrue(arr[2]!.GetValue<bool>());
+        }
+
+        [TestMethod]
+        public void RoundtripLongArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var input = JsonNode.Parse("[1,2,9876543210]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual(1L, arr[0]!.GetValue<long>());
+            Assert.AreEqual(2L, arr[1]!.GetValue<long>());
+            Assert.AreEqual(9876543210L, arr[2]!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripDoubleArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            var input = JsonNode.Parse("[1.1,2.2,3.3]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual(1.1, arr[0]!.GetValue<double>(), 1e-9);
+            Assert.AreEqual(2.2, arr[1]!.GetValue<double>(), 1e-9);
+            Assert.AreEqual(3.3, arr[2]!.GetValue<double>(), 1e-9);
+        }
+
+        [TestMethod]
+        public void RoundtripStringArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.String));
+            var input = JsonNode.Parse("[\"a\",\"b\",\"c\"]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual("a", arr[0]!.GetValue<string>());
+            Assert.AreEqual("b", arr[1]!.GetValue<string>());
+            Assert.AreEqual("c", arr[2]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundtripDateTimeArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.DateTime));
+            var inputs = new[] { "2024-01-01T00:00:00Z", "2024-06-03T12:34:56Z", "2000-01-01T00:00:00Z" };
+            var input = JsonNode.Parse($"[\"{inputs[0]}\",\"{inputs[1]}\",\"{inputs[2]}\"]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            for (var i = 0; i < inputs.Length; i++)
+            {
+                var expected = DateTimeOffset.Parse(inputs[i], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).UtcDateTime;
+                var actual = DateTimeOffset.Parse(arr[i]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).UtcDateTime;
+                Assert.AreEqual(expected, actual);
+            }
+        }
+
+        [TestMethod]
+        public void RoundtripDurationArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Duration));
+            var inputs = new[] { "PT0S", "PT1H30M", "P1DT2H" };
+            var input = JsonNode.Parse($"[\"{inputs[0]}\",\"{inputs[1]}\",\"{inputs[2]}\"]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            for (var i = 0; i < inputs.Length; i++)
+            {
+                var expected = XmlConvert.ToTimeSpan(inputs[i]);
+                var actual = XmlConvert.ToTimeSpan(arr[i]!.GetValue<string>());
+                Assert.AreEqual(expected, actual);
+            }
+        }
+
+        [TestMethod]
+        public void RoundtripArrayOfNullablePrimitives()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long)));
+            var input = JsonNode.Parse("[1,null,2]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual(1L, arr[0]!.GetValue<long>());
+            Assert.IsNull(arr[1]);
+            Assert.AreEqual(2L, arr[2]!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripStructArray()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.ArrayTypeRef(coordSchema);
+            var input = JsonNode.Parse("[{\"lat\":1.0,\"lon\":2.0},{\"lat\":3.0,\"lon\":4.0}]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(2, arr.Count);
+            Assert.AreEqual(1.0, arr[0]!.AsObject()["lat"]!.GetValue<double>());
+            Assert.AreEqual(2.0, arr[0]!.AsObject()["lon"]!.GetValue<double>());
+            Assert.AreEqual(3.0, arr[1]!.AsObject()["lat"]!.GetValue<double>());
+            Assert.AreEqual(4.0, arr[1]!.AsObject()["lon"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void RoundtripArrayOfNullableStructs()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.ArrayTypeRef(new TR.NullableTypeRef(coordSchema));
+            var input = JsonNode.Parse("[{\"lat\":1.0,\"lon\":2.0},null,{\"lat\":3.0,\"lon\":4.0}]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.IsNotNull(arr[0]);
+            Assert.IsNull(arr[1]);
+            Assert.IsNotNull(arr[2]);
+            Assert.AreEqual(1.0, arr[0]!.AsObject()["lat"]!.GetValue<double>());
+            Assert.AreEqual(3.0, arr[2]!.AsObject()["lat"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void RoundtripEnumArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var input = JsonNode.Parse("[\"Ok\",\"Warning\"]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            var arr = rt!.AsArray();
+            Assert.AreEqual(2, arr.Count);
+            Assert.AreEqual("Ok", arr[0]!.GetValue<string>());
+            Assert.AreEqual("Warning", arr[1]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundtripEmptyArrayIsEmpty()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var input = JsonNode.Parse("[]");
+            var rt = Roundtrip(input, schema);
+            Assert.IsNotNull(rt);
+            Assert.AreEqual(0, rt!.AsArray().Count);
+        }
+
+        // ── Negative tests ────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void ThrowsOnNestedArrayType()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long)));
+            var input = JsonNode.Parse("[[1,2]]");
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(input, schema));
+        }
+
+        [TestMethod]
+        public void ThrowsOnNullElementForNonNullableItemType()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var input = JsonNode.Parse("[1,null,2]");
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(input, schema));
+        }
+
         private static byte[] BuildBoolVal(bool v)
         {
             var builder = new FlatBufferBuilder(64);
