@@ -458,5 +458,32 @@ namespace Vion.Contracts.Test.TypeRef
             var node = JsonNode.Parse("{\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}")!;
             Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(node));
         }
+
+        [TestMethod]
+        public void AcceptStructWithAdditionalPropertiesAbsent()
+        {
+            // Lenient: ParseObject accepts a struct schema where additionalProperties is omitted
+            // entirely, treating it the same as the explicit `false` we always emit. Externally-
+            // generated schemas that don't declare additionalProperties don't fail. Locks in the
+            // policy so an accidental tightening would surface here.
+            var node = JsonNode.Parse("{\"type\":\"object\",\"title\":\"X\",\"properties\":{},\"required\":[]}")!;
+            var schema = TypeSchemaSerialization.FromJsonSchema(node);
+            Assert.IsInstanceOfType<StructTypeRef>(schema.Type);
+            Assert.AreEqual("X", ((StructTypeRef)schema.Type).Title);
+        }
+
+        [TestMethod]
+        public void AcceptNullableTypeArrayInReverseOrder()
+        {
+            // ParseTypeKeyword tolerates ["null","X"] as well as ["X","null"]. ToJsonSchema always
+            // emits the latter order; this test locks in tolerance for externally-generated schemas
+            // using the reverse order.
+            var node = JsonNode.Parse("{\"type\":[\"null\",\"number\"],\"format\":\"double\"}")!;
+            var schema = TypeSchemaSerialization.FromJsonSchema(node);
+
+            Assert.IsInstanceOfType<NullableTypeRef>(schema.Type);
+            var inner = ((NullableTypeRef)schema.Type).Inner;
+            Assert.AreEqual(new PrimitiveTypeRef(PrimitiveKind.Double), inner);
+        }
     }
 }

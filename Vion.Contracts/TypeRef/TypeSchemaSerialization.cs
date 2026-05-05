@@ -390,7 +390,16 @@ namespace Vion.Contracts.TypeRef
         private static (TypeRef, ImmutableDictionary<string, TypeAnnotations>) ParseArray(JsonObject obj)
         {
             var items = obj["items"] ?? throw new InvalidSchemaException("Array schema must include 'items'");
-            var (itemType, _, sfa) = ParseNode(items);
+
+            // We deliberately discard item-level annotations. Per spec §5.1 array convention, x-unit
+            // and other annotations live on the outer array node — the items annotations from
+            // ToJsonSchema are a redundant copy (BuildArray double-emits to both). For externally-
+            // generated schemas that put annotations only on `items`, this is a known data-loss path;
+            // accepted as v1 behavior because (a) the only producer today is our own ToJsonSchema, and
+            // (b) the alternative (lift item annotations when outer has none) introduces ambiguity
+            // when both levels are populated. Revisit if a third-party schema source becomes a real
+            // consumer.
+            var (itemType, _itemAnnotationsIgnored, sfa) = ParseNode(items);
             if (itemType is ArrayTypeRef)
             {
                 throw new InvalidSchemaException("Nested arrays are not supported in the Dale profile");
