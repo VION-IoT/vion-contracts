@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using Vion.Contracts.TypeRef;
 
@@ -32,7 +33,7 @@ namespace Vion.Contracts.Test.TypeRef
         [TestMethod]
         public void EmitJsonSchemaForEnumWithMultipleMembers()
         {
-            var schema = TypeSchema.Of(new EnumTypeRef("AlarmState", System.Collections.Immutable.ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var schema = TypeSchema.Of(new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical")));
             var actual = schema.ToJsonSchema().ToJsonString();
 
             var expected = "{\"type\":\"string\",\"title\":\"AlarmState\",\"enum\":[\"Ok\",\"Warning\",\"Critical\"]}";
@@ -42,7 +43,7 @@ namespace Vion.Contracts.Test.TypeRef
         [TestMethod]
         public void EmitJsonSchemaForEnumWithSingleMember()
         {
-            var schema = TypeSchema.Of(new EnumTypeRef("Mode", System.Collections.Immutable.ImmutableArray.Create("Auto")));
+            var schema = TypeSchema.Of(new EnumTypeRef("Mode", ImmutableArray.Create("Auto")));
             var actual = schema.ToJsonSchema().ToJsonString();
 
             var expected = "{\"type\":\"string\",\"title\":\"Mode\",\"enum\":[\"Auto\"]}";
@@ -53,8 +54,8 @@ namespace Vion.Contracts.Test.TypeRef
         public void PreserveEnumMemberDeclarationOrderInJsonSchema()
         {
             // Same members, different declaration order — JSON output must reflect the input order.
-            var ascending = TypeSchema.Of(new EnumTypeRef("Severity", System.Collections.Immutable.ImmutableArray.Create("Low", "Medium", "High")));
-            var descending = TypeSchema.Of(new EnumTypeRef("Severity", System.Collections.Immutable.ImmutableArray.Create("High", "Medium", "Low")));
+            var ascending = TypeSchema.Of(new EnumTypeRef("Severity", ImmutableArray.Create("Low", "Medium", "High")));
+            var descending = TypeSchema.Of(new EnumTypeRef("Severity", ImmutableArray.Create("High", "Medium", "Low")));
 
             var ascJson = ascending.ToJsonSchema().ToJsonString();
             var descJson = descending.ToJsonSchema().ToJsonString();

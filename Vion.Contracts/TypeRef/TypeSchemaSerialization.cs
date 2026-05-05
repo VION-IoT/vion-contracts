@@ -57,8 +57,6 @@ namespace Vion.Contracts.TypeRef
             };
         }
 
-        // Stubs filled in by later tasks. Throwing NotImplementedException keeps the build green
-        // (because the primitive tests don't traverse these branches) while making misuse loud.
         private static JsonObject BuildEnum(EnumTypeRef e)
         {
             var members = new JsonArray();
@@ -75,6 +73,8 @@ namespace Vion.Contracts.TypeRef
                    };
         }
 
+        // Stubs filled in by later tasks. Throwing NotImplementedException keeps the build green
+        // while making misuse loud — only callers that actually exercise these branches will fault.
         private static JsonObject BuildStruct(StructTypeRef s, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
             throw new NotImplementedException("Struct serialization arrives in §2.10");
