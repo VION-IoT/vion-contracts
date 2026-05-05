@@ -35,8 +35,67 @@ namespace Vion.Contracts.Codec
                 ValuePayload.StringVal => JsonValue.Create(pv.PayloadAsStringVal().Value),
                 ValuePayload.DateTimeVal => JsonValue.Create(DateTimeOffset.FromUnixTimeMilliseconds(pv.PayloadAsDateTimeVal().UnixMs).UtcDateTime.ToString("o")),
                 ValuePayload.DurationVal => JsonValue.Create(XmlConvert.ToString(TimeSpan.FromTicks(pv.PayloadAsDurationVal().Ticks))),
+                ValuePayload.BoolArray => DecodeBoolArray(pv.PayloadAsBoolArray()),
+                ValuePayload.LongArray => DecodeLongArray(pv.PayloadAsLongArray()),
+                ValuePayload.DoubleArray => DecodeDoubleArray(pv.PayloadAsDoubleArray()),
+                ValuePayload.StringArray => DecodeStringArray(pv.PayloadAsStringArray()),
+                ValuePayload.DateTimeArray => DecodeDateTimeArray(pv.PayloadAsDateTimeArray()),
+                ValuePayload.DurationArray => DecodeDurationArray(pv.PayloadAsDurationArray()),
                 _ => throw new PropertyValueDecodeException($"FlatBufferToJson: unhandled or not-yet-implemented variant '{pv.PayloadType}'."),
             };
+        }
+
+        private static JsonNode DecodeArray<T>(int valuesLength, int presentLength, Func<int, T> getValue, Func<int, bool> getPresent, Func<T, JsonNode?> elementToJson)
+        {
+            if (presentLength > 0 && presentLength != valuesLength)
+            {
+                throw new PropertyValueDecodeException($"FlatBufferToJson: array variant has values[{valuesLength}] but present[{presentLength}].");
+            }
+
+            var arr = new JsonArray();
+            for (var i = 0; i < valuesLength; i++)
+            {
+                if (presentLength == 0 || getPresent(i))
+                {
+                    arr.Add(elementToJson(getValue(i)));
+                }
+                else
+                {
+                    arr.Add(null);
+                }
+            }
+
+            return arr;
+        }
+
+        private static JsonNode DecodeBoolArray(BoolArray a)
+        {
+            return DecodeArray(a.ValuesLength, a.PresentLength, a.Values, a.Present, v => JsonValue.Create(v));
+        }
+
+        private static JsonNode DecodeLongArray(LongArray a)
+        {
+            return DecodeArray(a.ValuesLength, a.PresentLength, a.Values, a.Present, v => JsonValue.Create(v));
+        }
+
+        private static JsonNode DecodeDoubleArray(DoubleArray a)
+        {
+            return DecodeArray(a.ValuesLength, a.PresentLength, a.Values, a.Present, v => JsonValue.Create(v));
+        }
+
+        private static JsonNode DecodeStringArray(StringArray a)
+        {
+            return DecodeArray(a.ValuesLength, a.PresentLength, a.Values, a.Present, v => JsonValue.Create(v));
+        }
+
+        private static JsonNode DecodeDateTimeArray(DateTimeArray a)
+        {
+            return DecodeArray(a.UnixMsLength, a.PresentLength, a.UnixMs, a.Present, v => JsonValue.Create(DateTimeOffset.FromUnixTimeMilliseconds(v).UtcDateTime.ToString("o")));
+        }
+
+        private static JsonNode DecodeDurationArray(DurationArray a)
+        {
+            return DecodeArray(a.TicksLength, a.PresentLength, a.Ticks, a.Present, v => JsonValue.Create(XmlConvert.ToString(TimeSpan.FromTicks(v))));
         }
     }
 }
