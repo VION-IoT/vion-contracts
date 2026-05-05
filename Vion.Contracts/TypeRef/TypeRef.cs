@@ -20,44 +20,29 @@ namespace Vion.Contracts.TypeRef
     ///     Nominal enum type. Identity is <c>(Title, Members)</c> — renaming an enum produces a different
     ///     type even with the same members. The custom <see cref="Equals(EnumTypeRef?)" /> uses element-wise
     ///     comparison on <see cref="Members" /> because default record equality on
-    ///     <see cref="ImmutableArray{T}" /> is reference-based. Guards against <c>default</c> arrays
-    ///     (which are neither empty nor valid) prevent <see cref="System.NullReferenceException" /> in
-    ///     deserialisation paths that construct records via reflection.
+    ///     <see cref="ImmutableArray{T}" /> is reference-based. The constructor rejects
+    ///     <c>default(ImmutableArray&lt;string&gt;)</c> so invalid instances cannot exist.
     /// </summary>
     public sealed record EnumTypeRef(
         string Title, // identity-bearing
         ImmutableArray<string> Members) : TypeRef
     {
+        public ImmutableArray<string> Members { get; init; } = !Members.IsDefault ? Members :
+                                                                   throw new ArgumentException("Members must be initialized; default(ImmutableArray<string>) is not a valid value.",
+                                                                                               nameof(Members));
+
         public bool Equals(EnumTypeRef? other)
         {
-            if (other is null)
-            {
-                return false;
-            }
-
-            if (Title != other.Title)
-            {
-                return false;
-            }
-
-            if (Members.IsDefault || other.Members.IsDefault)
-            {
-                return false;
-            }
-
-            return Members.SequenceEqual(other.Members);
+            return other is not null && Title == other.Title && Members.SequenceEqual(other.Members);
         }
 
         public override int GetHashCode()
         {
             var hash = new HashCode();
             hash.Add(Title);
-            if (!Members.IsDefault)
+            foreach (var m in Members)
             {
-                foreach (var m in Members)
-                {
-                    hash.Add(m);
-                }
+                hash.Add(m);
             }
 
             return hash.ToHashCode();
@@ -67,57 +52,41 @@ namespace Vion.Contracts.TypeRef
     /// <summary>
     ///     Nominal struct type. Identity is <c>(Title, Fields, Required)</c>. The custom
     ///     <see cref="Equals(StructTypeRef?)" /> performs element-wise comparison on the two
-    ///     <see cref="ImmutableArray{T}" /> properties for the same reason as <see cref="EnumTypeRef" />,
-    ///     and guards against <c>default</c> arrays to avoid <see cref="System.NullReferenceException" />.
+    ///     <see cref="ImmutableArray{T}" /> properties for the same reason as <see cref="EnumTypeRef" />.
+    ///     The constructor rejects <c>default</c> arrays so invalid instances cannot exist.
     /// </summary>
     public sealed record StructTypeRef(
         string Title, // identity-bearing — mirrors EnumTypeRef
         ImmutableArray<StructField> Fields,
         ImmutableArray<string> Required) : TypeRef
     {
+        public ImmutableArray<StructField> Fields { get; init; } = !Fields.IsDefault ? Fields :
+                                                                       throw new
+                                                                           ArgumentException("Fields must be initialized; default(ImmutableArray<StructField>) is not a valid value.",
+                                                                                             nameof(Fields));
+
+        public ImmutableArray<string> Required { get; init; } = !Required.IsDefault ? Required :
+                                                                    throw new
+                                                                        ArgumentException("Required must be initialized; default(ImmutableArray<string>) is not a valid value.",
+                                                                                          nameof(Required));
+
         public bool Equals(StructTypeRef? other)
         {
-            if (other is null)
-            {
-                return false;
-            }
-
-            if (Title != other.Title)
-            {
-                return false;
-            }
-
-            if (Fields.IsDefault || other.Fields.IsDefault)
-            {
-                return false;
-            }
-
-            if (Required.IsDefault || other.Required.IsDefault)
-            {
-                return false;
-            }
-
-            return Fields.SequenceEqual(other.Fields) && Required.SequenceEqual(other.Required);
+            return other is not null && Title == other.Title && Fields.SequenceEqual(other.Fields) && Required.SequenceEqual(other.Required);
         }
 
         public override int GetHashCode()
         {
             var hash = new HashCode();
             hash.Add(Title);
-            if (!Fields.IsDefault)
+            foreach (var f in Fields)
             {
-                foreach (var f in Fields)
-                {
-                    hash.Add(f);
-                }
+                hash.Add(f);
             }
 
-            if (!Required.IsDefault)
+            foreach (var r in Required)
             {
-                foreach (var r in Required)
-                {
-                    hash.Add(r);
-                }
+                hash.Add(r);
             }
 
             return hash.ToHashCode();

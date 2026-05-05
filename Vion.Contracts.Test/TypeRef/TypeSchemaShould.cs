@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using Vion.Contracts.TypeRef;
 
@@ -31,18 +32,29 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
-        public void TreatNullStructFieldAnnotationsAsDistinct()
+        public void RejectNullStructFieldAnnotationsAtConstruction()
         {
+            // StructFieldAnnotations must be non-null; null is rejected at construction so that
+            // invalid instances cannot exist. Mirrors the IsDefault guards on
+            // EnumTypeRef.Members and StructTypeRef.Fields/Required.
             var t = new PrimitiveTypeRef(PrimitiveKind.Double);
-            var populated = new TypeSchema(t, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
-            var nullified = new TypeSchema(t, TypeAnnotations.None, null!);
+            Assert.Throws<ArgumentNullException>(() => new TypeSchema(t, TypeAnnotations.None, null!));
+        }
 
-            // Null StructFieldAnnotations is treated as "unknown" — not equal to any other instance,
-            // including another null. Mirrors the IsDefault guard pattern on EnumTypeRef/StructTypeRef.
-            Assert.AreNotEqual(populated, nullified);
+        [TestMethod]
+        public void TreatStructFieldAnnotationsWithDifferentInsertionOrderAsEqual()
+        {
+            // Equality uses OrderBy(kv => kv.Key), so dictionaries built with the same key/value
+            // pairs but inserted in different order must compare equal and have equal hash codes.
+            var t = new PrimitiveTypeRef(PrimitiveKind.Double);
+            var unitV = new TypeAnnotations { Unit = "V" };
+            var unitA = new TypeAnnotations { Unit = "A" };
 
-            var alsoNull = new TypeSchema(t, TypeAnnotations.None, null!);
-            Assert.AreNotEqual(nullified, alsoNull);
+            var s1 = new TypeSchema(t, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty.Add("voltage", unitV).Add("current", unitA));
+            var s2 = new TypeSchema(t, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty.Add("current", unitA).Add("voltage", unitV));
+
+            Assert.AreEqual(s1, s2);
+            Assert.AreEqual(s1.GetHashCode(), s2.GetHashCode());
         }
     }
 }

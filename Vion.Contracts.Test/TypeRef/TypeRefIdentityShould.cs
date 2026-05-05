@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using Vion.Contracts.TypeRef;
 
@@ -125,15 +126,22 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
-        public void TreatDefaultMembersAsDistinctFromPopulatedMembers()
+        public void RejectDefaultMembersAtConstruction()
         {
-            var populated = new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok"));
-            var defaulted = new EnumTypeRef("AlarmState", default);
-            Assert.AreNotEqual(populated, defaulted);
+            // EnumTypeRef.Members must be initialized; default(ImmutableArray<T>) is rejected so that
+            // invalid instances cannot exist. Mirrors StructTypeRef.Fields/Required and
+            // TypeSchema.StructFieldAnnotations.
+            Assert.Throws<ArgumentException>(() => new EnumTypeRef("AlarmState", default));
+        }
 
-            // Two defaulted instances are also not equal — default is "unknown", not "empty".
-            var alsoDefaulted = new EnumTypeRef("AlarmState", default);
-            Assert.AreNotEqual(defaulted, alsoDefaulted);
+        [TestMethod]
+        public void RejectDefaultFieldsOrRequiredAtConstruction()
+        {
+            var fields = ImmutableArray.Create(new StructField("X", new PrimitiveTypeRef(PrimitiveKind.Double)));
+            var required = ImmutableArray.Create("X");
+
+            Assert.Throws<ArgumentException>(() => new StructTypeRef("Coordinates", default, required));
+            Assert.Throws<ArgumentException>(() => new StructTypeRef("Coordinates", fields, default));
         }
 
         [TestMethod]
