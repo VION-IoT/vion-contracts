@@ -686,5 +686,243 @@ namespace Vion.Contracts.Codec
             var arr = StructArray.CreateStructArray(b, itemsVec, presentOff);
             return (ValuePayload.StructArray, arr.Value);
         }
+
+        // ── Validation ────────────────────────────────────────────────────────
+
+        /// <summary>
+        ///     Validates <paramref name="json"/> against <paramref name="schema"/>, returning every
+        ///     mismatch in <see cref="ValidationResult.Errors"/>. Checks structural shape (JSON token
+        ///     vs <c>TypeRef</c>), numeric range (<see cref="TR.TypeAnnotations.Minimum"/> /
+        ///     <see cref="TR.TypeAnnotations.Maximum"/>), enum membership
+        ///     (<see cref="TR.EnumTypeRef.Members"/>), required struct fields, and the property-level
+        ///     <see cref="TR.TypeAnnotations.ReadOnly"/> guard. Does not throw on validation failure —
+        ///     callers inspect <see cref="ValidationResult.IsValid"/>.
+        /// </summary>
+        public static ValidationResult ValidateJson(JsonNode? json, TR.TypeSchema schema)
+        {
+            var errors = new List<string>();
+
+            // ReadOnly is a property-level guard: when true, any incoming Set is rejected outright.
+            if (schema.Annotations.ReadOnly)
+            {
+                errors.Add("$: property is read-only.");
+                return new ValidationResult(false, errors.ToImmutableArray());
+            }
+
+            Validate(json,
+                     schema.Type,
+                     schema.Annotations,
+                     schema.StructFieldAnnotations,
+                     "$",
+                     errors);
+            return errors.Count == 0 ? ValidationResult.Valid : new ValidationResult(false, errors.ToImmutableArray());
+        }
+
+        private static void Validate(JsonNode? json,
+                                     TR.TypeRef type,
+                                     TR.TypeAnnotations annot,
+                                     ImmutableDictionary<string, TR.TypeAnnotations> fieldAnnotations,
+                                     string path,
+                                     List<string> errors)
+        {
+            if (type is TR.NullableTypeRef n)
+            {
+                if (json is null) return; // null is valid for nullable
+
+                Validate(json,
+                         n.Inner,
+                         annot,
+                         fieldAnnotations,
+                         path,
+                         errors);
+                return;
+            }
+
+            if (json is null)
+            {
+                errors.Add($"{path}: null is not valid for non-nullable type.");
+                return;
+            }
+
+            switch (type)
+            {
+                case TR.PrimitiveTypeRef p:
+                    ValidatePrimitive(json, p, annot, path, errors);
+                    break;
+                case TR.EnumTypeRef e:
+                    ValidateEnum(json, e, path, errors);
+                    break;
+                case TR.StructTypeRef s:
+                    ValidateStruct(json, s, fieldAnnotations, path, errors);
+                    break;
+                case TR.ArrayTypeRef a:
+                    ValidateArray(json, a, fieldAnnotations, path, errors);
+                    break;
+                default:
+                    errors.Add($"{path}: unknown schema type '{type.GetType().Name}'.");
+                    break;
+            }
+        }
+
+        private static void ValidatePrimitive(JsonNode json, TR.PrimitiveTypeRef p, TR.TypeAnnotations annot, string path, List<string> errors)
+        {
+            if (json is not JsonValue jv)
+            {
+                errors.Add($"{path}: expected JSON scalar for PrimitiveKind '{p.Kind}', got '{json.GetType().Name}'.");
+                return;
+            }
+
+            switch (p.Kind)
+            {
+                case TR.PrimitiveKind.Bool:
+                    if (!jv.TryGetValue<bool>(out _))
+                        errors.Add($"{path}: expected JSON bool for PrimitiveKind 'Bool', got '{jv}'.");
+                    break;
+                case TR.PrimitiveKind.String:
+                    if (!jv.TryGetValue<string>(out _))
+                        errors.Add($"{path}: expected JSON string for PrimitiveKind 'String', got '{jv}'.");
+                    break;
+                case TR.PrimitiveKind.Byte:
+                case TR.PrimitiveKind.Short:
+                case TR.PrimitiveKind.UShort:
+                case TR.PrimitiveKind.Int:
+                case TR.PrimitiveKind.UInt:
+                case TR.PrimitiveKind.Long:
+                    if (!jv.TryGetValue<long>(out var lv))
+                    {
+                        errors.Add($"{path}: expected JSON integer for PrimitiveKind '{p.Kind}', got '{jv}'.");
+                        break;
+                    }
+
+                    CheckIntegerRange(lv, p.Kind, path, errors);
+                    CheckMinMax(lv, annot, path, errors);
+                    break;
+                case TR.PrimitiveKind.Float:
+                case TR.PrimitiveKind.Double:
+                    if (!jv.TryGetValue<double>(out var dv))
+                    {
+                        errors.Add($"{path}: expected JSON number for PrimitiveKind '{p.Kind}', got '{jv}'.");
+                        break;
+                    }
+
+                    CheckMinMax(dv, annot, path, errors);
+                    break;
+                case TR.PrimitiveKind.DateTime:
+                    if (!jv.TryGetValue<string>(out var dts) || !DateTimeOffset.TryParse(dts, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _))
+                        errors.Add($"{path}: expected RFC 3339 / ISO 8601 string for PrimitiveKind 'DateTime', got '{jv}'.");
+                    break;
+                case TR.PrimitiveKind.Duration:
+                    if (!jv.TryGetValue<string>(out var ds))
+                    {
+                        errors.Add($"{path}: expected ISO 8601 duration string for PrimitiveKind 'Duration', got '{jv}'.");
+                        break;
+                    }
+
+                    try
+                    {
+                        _ = XmlConvert.ToTimeSpan(ds);
+                    }
+                    catch (FormatException)
+                    {
+                        errors.Add($"{path}: '{ds}' is not a valid ISO 8601 duration.");
+                    }
+
+                    break;
+                default:
+                    errors.Add($"{path}: unknown PrimitiveKind '{p.Kind}'.");
+                    break;
+            }
+        }
+
+        private static void CheckIntegerRange(long v, TR.PrimitiveKind kind, string path, List<string> errors)
+        {
+            var (min, max) = kind switch
+            {
+                TR.PrimitiveKind.Byte => ((long)byte.MinValue, (long)byte.MaxValue),
+                TR.PrimitiveKind.UShort => ((long)ushort.MinValue, (long)ushort.MaxValue),
+                TR.PrimitiveKind.UInt => (0L, (long)uint.MaxValue),
+                TR.PrimitiveKind.Short => ((long)short.MinValue, (long)short.MaxValue),
+                TR.PrimitiveKind.Int => ((long)int.MinValue, (long)int.MaxValue),
+                TR.PrimitiveKind.Long => (long.MinValue, long.MaxValue),
+                _ => (long.MinValue, long.MaxValue)
+            };
+            if (v < min || v > max)
+                errors.Add($"{path}: integer {v} is out of range for PrimitiveKind '{kind}' ({min}..{max}).");
+        }
+
+        private static void CheckMinMax(double v, TR.TypeAnnotations annot, string path, List<string> errors)
+        {
+            if (annot.Minimum is double min && v < min)
+                errors.Add($"{path}: value {v} is below minimum {min}.");
+            if (annot.Maximum is double max && v > max)
+                errors.Add($"{path}: value {v} is above maximum {max}.");
+        }
+
+        private static void ValidateEnum(JsonNode json, TR.EnumTypeRef e, string path, List<string> errors)
+        {
+            if (json is not JsonValue jv || !jv.TryGetValue<string>(out var name))
+            {
+                errors.Add($"{path}: expected JSON string for enum '{e.Title}', got '{json.GetType().Name}'.");
+                return;
+            }
+
+            if (!e.Members.Contains(name))
+                errors.Add($"{path}: '{name}' is not a member of enum '{e.Title}' (allowed: {string.Join(", ", e.Members)}).");
+        }
+
+        private static void ValidateStruct(JsonNode json, TR.StructTypeRef s, ImmutableDictionary<string, TR.TypeAnnotations> fieldAnnotations, string path, List<string> errors)
+        {
+            if (json is not JsonObject obj)
+            {
+                errors.Add($"{path}: expected JSON object for struct '{s.Title}', got '{json.GetType().Name}'.");
+                return;
+            }
+
+            // Required fields must be present
+            foreach (var requiredName in s.Required)
+            {
+                if (!obj.ContainsKey(requiredName))
+                    errors.Add($"{path}: required field '{requiredName}' missing on struct '{s.Title}'.");
+            }
+
+            // Validate each present field (against schema's known fields)
+            foreach (var field in s.Fields)
+            {
+                if (!obj.TryGetPropertyValue(field.Name, out var fieldJson))
+                    continue; // already reported above if required; silently OK if optional
+
+                var fieldAnnot = fieldAnnotations.TryGetValue(field.Name, out var fa) ? fa : TR.TypeAnnotations.None;
+                Validate(fieldJson,
+                         field.Type,
+                         fieldAnnot,
+                         ImmutableDictionary<string, TR.TypeAnnotations>.Empty,
+                         $"{path}.{field.Name}",
+                         errors);
+            }
+
+            // Note: spec says additionalProperties: false. Report unknown keys.
+            foreach (var kvp in obj)
+            {
+                if (!s.Fields.Any(f => f.Name == kvp.Key))
+                    errors.Add($"{path}: unknown field '{kvp.Key}' on struct '{s.Title}' (additionalProperties not allowed).");
+            }
+        }
+
+        private static void ValidateArray(JsonNode json, TR.ArrayTypeRef a, ImmutableDictionary<string, TR.TypeAnnotations> fieldAnnotations, string path, List<string> errors)
+        {
+            if (json is not JsonArray ja)
+            {
+                errors.Add($"{path}: expected JSON array, got '{json.GetType().Name}'.");
+                return;
+            }
+
+            for (var i = 0; i < ja.Count; i++)
+                Validate(ja[i],
+                         a.Items,
+                         TR.TypeAnnotations.None,
+                         fieldAnnotations,
+                         $"{path}[{i}]",
+                         errors);
+        }
     }
 }
