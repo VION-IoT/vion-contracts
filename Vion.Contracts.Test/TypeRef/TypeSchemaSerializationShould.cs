@@ -28,5 +28,40 @@ namespace Vion.Contracts.Test.TypeRef
             var expectedCanonical = JsonNode.Parse(expected)!.ToJsonString();
             Assert.AreEqual(expectedCanonical, actual.ToJsonString());
         }
+
+        [TestMethod]
+        public void EmitJsonSchemaForEnumWithMultipleMembers()
+        {
+            var schema = TypeSchema.Of(new EnumTypeRef("AlarmState", System.Collections.Immutable.ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            var expected = "{\"type\":\"string\",\"title\":\"AlarmState\",\"enum\":[\"Ok\",\"Warning\",\"Critical\"]}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitJsonSchemaForEnumWithSingleMember()
+        {
+            var schema = TypeSchema.Of(new EnumTypeRef("Mode", System.Collections.Immutable.ImmutableArray.Create("Auto")));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            var expected = "{\"type\":\"string\",\"title\":\"Mode\",\"enum\":[\"Auto\"]}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void PreserveEnumMemberDeclarationOrderInJsonSchema()
+        {
+            // Same members, different declaration order — JSON output must reflect the input order.
+            var ascending = TypeSchema.Of(new EnumTypeRef("Severity", System.Collections.Immutable.ImmutableArray.Create("Low", "Medium", "High")));
+            var descending = TypeSchema.Of(new EnumTypeRef("Severity", System.Collections.Immutable.ImmutableArray.Create("High", "Medium", "Low")));
+
+            var ascJson = ascending.ToJsonSchema().ToJsonString();
+            var descJson = descending.ToJsonSchema().ToJsonString();
+
+            Assert.AreEqual("{\"type\":\"string\",\"title\":\"Severity\",\"enum\":[\"Low\",\"Medium\",\"High\"]}", ascJson);
+            Assert.AreEqual("{\"type\":\"string\",\"title\":\"Severity\",\"enum\":[\"High\",\"Medium\",\"Low\"]}", descJson);
+            Assert.AreNotEqual(ascJson, descJson);
+        }
     }
 }

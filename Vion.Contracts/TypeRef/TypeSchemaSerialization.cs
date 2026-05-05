@@ -27,6 +27,7 @@ namespace Vion.Contracts.TypeRef
                 NullableTypeRef n => BuildNullable(n, annotations, structFieldAnnotations),
                 _ => throw new InvalidOperationException($"Unknown TypeRef: {type.GetType()}"),
             };
+
             // Annotations are applied centrally here (after dispatch), not inside each Build method.
             // Build methods that recurse (BuildArray, BuildNullable) pass annotations down so the
             // recursive BuildSchema call can apply them at the inner level. Build methods that don't
@@ -60,7 +61,18 @@ namespace Vion.Contracts.TypeRef
         // (because the primitive tests don't traverse these branches) while making misuse loud.
         private static JsonObject BuildEnum(EnumTypeRef e)
         {
-            throw new NotImplementedException("Enum serialization arrives in §2.9");
+            var members = new JsonArray();
+            foreach (var m in e.Members)
+            {
+                members.Add(m);
+            }
+
+            return new JsonObject
+                   {
+                       ["type"] = "string",
+                       ["title"] = e.Title,
+                       ["enum"] = members,
+                   };
         }
 
         private static JsonObject BuildStruct(StructTypeRef s, ImmutableDictionary<string, TypeAnnotations> sfa)
