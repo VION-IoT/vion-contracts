@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json.Nodes;
@@ -12,7 +13,8 @@ namespace Vion.Contracts.Codec
     /// <summary>
     ///     Codec between the FlatBuffers <c>PropertyValue</c> wire format and
     ///     <see cref="JsonNode" /> / CLR values. The FB→JSON direction is schema-free —
-    ///     the union tag tree is self-describing.
+    ///     the union tag tree is self-describing — while JSON→FB and the CLR-bridge
+    ///     directions consume a <see cref="TR.TypeRef" /> schema.
     /// </summary>
     public static class PropertyValueCodec
     {
@@ -42,6 +44,102 @@ namespace Vion.Contracts.Codec
             var pv = PropertyValue.CreatePropertyValue(builder, payloadType, payloadOffset);
             builder.Finish(pv.Value);
             return builder.SizedByteArray();
+        }
+
+        /// <summary>
+        ///     Encodes a CLR value into a serialized <c>PropertyValue</c> FlatBuffer using the schema
+        ///     <paramref name="type" />. Bridges C# types (including positional record-structs and enums)
+        ///     to the wire format by first converting to JSON via <see cref="ClrToJson" />, then to FB
+        ///     via <see cref="JsonToFlatBuffer" />.
+        /// </summary>
+        public static byte[] ClrToFlatBuffer(object? value, TR.TypeRef type)
+        {
+            var json = ClrToJson(value, type);
+            return JsonToFlatBuffer(json, type);
+        }
+
+        private static JsonNode? ClrToJson(object? value, TR.TypeRef type)
+        {
+            // Nullable wrapper handling — C# nullable value types unwrap automatically when boxed
+            // (e.g. (object)((int?)null) is null; (object)((int?)42) is 42 boxed as int).
+            if (type is TR.NullableTypeRef n)
+            {
+                if (value is null) return null;
+
+                return ClrToJson(value, n.Inner);
+            }
+
+            if (value is null)
+                throw new PropertyValueDecodeException($"ClrToFlatBuffer: null value is not valid for non-nullable schema type '{type.GetType().Name}'.");
+
+            return type switch
+            {
+                TR.PrimitiveTypeRef p => ClrPrimitiveToJson(value, p),
+                TR.EnumTypeRef _ => JsonValue.Create(EnumNameCache.GetName(value.GetType(), value)),
+                TR.StructTypeRef s => ClrStructToJson(value, s),
+                TR.ArrayTypeRef a => ClrArrayToJson(value, a),
+                _ => throw new PropertyValueDecodeException($"ClrToFlatBuffer: unknown schema type '{type.GetType().Name}'."),
+            };
+        }
+
+        private static JsonNode ClrPrimitiveToJson(object value, TR.PrimitiveTypeRef p) =>
+            p.Kind switch
+            {
+                TR.PrimitiveKind.Bool => JsonValue.Create((bool)value)!,
+                TR.PrimitiveKind.String => JsonValue.Create((string)value)!,
+
+                TR.PrimitiveKind.Byte => JsonValue.Create((long)(byte)value)!,
+                TR.PrimitiveKind.UShort => JsonValue.Create((long)(ushort)value)!,
+                TR.PrimitiveKind.UInt => JsonValue.Create((long)(uint)value)!,
+                TR.PrimitiveKind.Short => JsonValue.Create((long)(short)value)!,
+                TR.PrimitiveKind.Int => JsonValue.Create((long)(int)value)!,
+                TR.PrimitiveKind.Long => JsonValue.Create((long)value)!,
+
+                TR.PrimitiveKind.Float => JsonValue.Create((double)(float)value)!,
+                TR.PrimitiveKind.Double => JsonValue.Create((double)value)!,
+
+                // DateTime: emit as RFC 3339 / ISO 8601 string. Local DateTimes are rejected —
+                // the contract requires UTC or Unspecified (treated as UTC).
+                TR.PrimitiveKind.DateTime when value is DateTime dt => dt.Kind == DateTimeKind.Local ?
+                                                                           throw new
+                                                                               PropertyValueDecodeException("ClrToFlatBuffer: DateTime values must be UTC or Unspecified (got Local).") :
+                                                                           JsonValue.Create(DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+                                                                                                    .ToString("o", CultureInfo.InvariantCulture))!,
+
+                // Duration: ISO 8601 duration via XmlConvert
+                TR.PrimitiveKind.Duration when value is TimeSpan ts => JsonValue.Create(XmlConvert.ToString(ts))!,
+
+                _ => throw new PropertyValueDecodeException($"ClrToFlatBuffer: cannot encode CLR value of type '{value.GetType().FullName}' as PrimitiveKind '{p.Kind}'."),
+            };
+
+        private static string CamelToPascal(string camelCase) => string.IsNullOrEmpty(camelCase) ? camelCase : char.ToUpperInvariant(camelCase[0]) + camelCase[1..];
+
+        private static JsonObject ClrStructToJson(object value, TR.StructTypeRef s)
+        {
+            var obj = new JsonObject();
+            var clrType = value.GetType();
+            foreach (var field in s.Fields)
+            {
+                var pascalName = CamelToPascal(field.Name);
+                var prop = clrType.GetProperty(pascalName) ??
+                           throw new
+                               PropertyValueDecodeException($"ClrToFlatBuffer: CLR type '{clrType.FullName}' has no property '{pascalName}' for schema field '{field.Name}' on struct '{s.Title}'.");
+                var fieldValue = prop.GetValue(value);
+                obj[field.Name] = ClrToJson(fieldValue, field.Type);
+            }
+
+            return obj;
+        }
+
+        private static JsonArray ClrArrayToJson(object value, TR.ArrayTypeRef a)
+        {
+            if (value is not IEnumerable enumerable)
+                throw new PropertyValueDecodeException($"ClrToFlatBuffer: expected IEnumerable for ArrayTypeRef, got '{value.GetType().FullName}'.");
+
+            var arr = new JsonArray();
+            foreach (var item in enumerable)
+                arr.Add(ClrToJson(item, a.Items));
+            return arr;
         }
 
         private static JsonNode? DecodePayload(PropertyValue pv)

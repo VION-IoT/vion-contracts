@@ -11,6 +11,19 @@ using TR = Vion.Contracts.TypeRef;
 
 namespace Vion.Contracts.Test.Codec
 {
+    public enum AlarmState
+    {
+        Ok,
+
+        Warning,
+
+        Critical,
+    }
+
+    public readonly record struct Coordinates(double Lat, double Lon);
+
+    public readonly record struct Coordinates3D(double Lat, double Lon, double Altitude);
+
     [TestClass]
     public class PropertyValueCodecShould
     {
@@ -328,6 +341,308 @@ namespace Vion.Contracts.Test.Codec
         {
             var bytes = BuildBoolArrayVal(Array.Empty<bool>());
             var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(0, json!.AsArray().Count);
+        }
+
+        // ── CLR-encode round-trip tests (ClrToFlatBuffer → FlatBufferToJson) ──
+
+        [TestMethod]
+        public void ClrEncodeBoolWritesJsonBool()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Bool);
+            var json = ClrEncodeAndDecode(true, schema);
+            Assert.IsNotNull(json);
+            Assert.IsTrue(json!.GetValue<bool>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeStringWritesJsonString()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.String);
+            var json = ClrEncodeAndDecode("hello clr", schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual("hello clr", json!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeLongWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            var json = ClrEncodeAndDecode(42L, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(42L, json!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeIntWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Int);
+            var json = ClrEncodeAndDecode((int)42, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(42L, json!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeUIntWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UInt);
+            var json = ClrEncodeAndDecode(4_000_000_000u, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(4_000_000_000L, json!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeByteWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Byte);
+            var json = ClrEncodeAndDecode((byte)200, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(200L, json!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeDoubleWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double);
+            var json = ClrEncodeAndDecode(3.14, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(3.14, json!.GetValue<double>(), 1e-9);
+        }
+
+        [TestMethod]
+        public void ClrEncodeFloatWritesJsonNumber()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Float);
+            var json = ClrEncodeAndDecode((float)1.5f, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(1.5, json!.GetValue<double>(), 0.001);
+        }
+
+        [TestMethod]
+        public void ClrEncodeDateTimeWritesJsonString()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.DateTime);
+            var dt = new DateTime(2024,
+                                  6,
+                                  3,
+                                  12,
+                                  0,
+                                  0,
+                                  DateTimeKind.Utc);
+            var json = ClrEncodeAndDecode(dt, schema);
+            Assert.IsNotNull(json);
+            var parsed = DateTimeOffset.Parse(json!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            Assert.AreEqual(dt, parsed.UtcDateTime);
+        }
+
+        [TestMethod]
+        public void ClrEncodeTimeSpanWritesJsonString()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Duration);
+            var json = ClrEncodeAndDecode(TimeSpan.FromMinutes(90), schema);
+            Assert.IsNotNull(json);
+            var parsed = XmlConvert.ToTimeSpan(json!.GetValue<string>());
+            Assert.AreEqual(TimeSpan.FromMinutes(90), parsed);
+        }
+
+        [TestMethod]
+        public void ClrEncodeLocalDateTimeThrows()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.DateTime);
+            var localDt = DateTime.SpecifyKind(new DateTime(2024,
+                                                            1,
+                                                            1,
+                                                            0,
+                                                            0,
+                                                            0),
+                                               DateTimeKind.Local);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.ClrToFlatBuffer(localDt, schema));
+        }
+
+        [TestMethod]
+        public void ClrEncodeEnumWritesMemberName()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var json = ClrEncodeAndDecode(AlarmState.Warning, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual("Warning", json!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeUndefinedEnumValueThrows()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.ClrToFlatBuffer((AlarmState)99, schema));
+        }
+
+        [TestMethod]
+        public void ClrEncodeEnumExercisesCache()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var json1 = ClrEncodeAndDecode(AlarmState.Ok, schema);
+            var json2 = ClrEncodeAndDecode(AlarmState.Critical, schema);
+            Assert.IsNotNull(json1);
+            Assert.IsNotNull(json2);
+            Assert.AreEqual("Ok", json1!.GetValue<string>());
+            Assert.AreEqual("Critical", json2!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeStructWritesJsonObjectWithCamelCaseKeys()
+        {
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon"));
+            var json = ClrEncodeAndDecode(new Coordinates(47.3, 8.5), schema);
+            Assert.IsNotNull(json);
+            var obj = json!.AsObject();
+            Assert.IsTrue(obj.ContainsKey("lat"));
+            Assert.IsTrue(obj.ContainsKey("lon"));
+            Assert.AreEqual(47.3, obj["lat"]!.GetValue<double>());
+            Assert.AreEqual(8.5, obj["lon"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeStructPreservesSchemaFieldOrder()
+        {
+            var schema = new TR.StructTypeRef("Coordinates3D",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("altitude", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon", "altitude"));
+            var json = ClrEncodeAndDecode(new Coordinates3D(47.3, 8.5, 423.0), schema);
+            Assert.IsNotNull(json);
+            var keys = json!.AsObject().Select(kvp => kvp.Key).ToArray();
+            Assert.AreEqual("lat", keys[0]);
+            Assert.AreEqual("lon", keys[1]);
+            Assert.AreEqual("altitude", keys[2]);
+        }
+
+        [TestMethod]
+        public void ClrEncodeStructWithMissingClrPropertyThrows()
+        {
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("missing", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon", "missing"));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.ClrToFlatBuffer(new Coordinates(1.0, 2.0), schema));
+        }
+
+        [TestMethod]
+        public void ClrEncodeNullablePrimitiveValueWrites()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            var json = ClrEncodeAndDecode((double?)42.0, schema);
+            Assert.IsNotNull(json);
+            Assert.AreEqual(42.0, json!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeNullablePrimitiveNullWritesJsonNull()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            var json = ClrEncodeAndDecode((double?)null, schema);
+            Assert.IsNull(json);
+        }
+
+        [TestMethod]
+        public void ClrEncodeNullableStructValue()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.NullableTypeRef(coordSchema);
+            var json = ClrEncodeAndDecode((Coordinates?)new Coordinates(1.0, 2.0), schema);
+            Assert.IsNotNull(json);
+            var obj = json!.AsObject();
+            Assert.AreEqual(1.0, obj["lat"]!.GetValue<double>());
+            Assert.AreEqual(2.0, obj["lon"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeNullableStructNull()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.NullableTypeRef(coordSchema);
+            var json = ClrEncodeAndDecode((Coordinates?)null, schema);
+            Assert.IsNull(json);
+        }
+
+        [TestMethod]
+        public void ClrEncodeNullForNonNullablePrimitiveThrows()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.ClrToFlatBuffer(null, schema));
+        }
+
+        [TestMethod]
+        public void ClrEncodeImmutableArrayLong()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var json = ClrEncodeAndDecode(ImmutableArray.Create(1L, 2L, 3L), schema);
+            Assert.IsNotNull(json);
+            var arr = json!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual(1L, arr[0]!.GetValue<long>());
+            Assert.AreEqual(2L, arr[1]!.GetValue<long>());
+            Assert.AreEqual(3L, arr[2]!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeImmutableArrayStruct()
+        {
+            var coordSchema = new TR.StructTypeRef("Coordinates",
+                                                   ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                         new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                                   ImmutableArray.Create("lat", "lon"));
+            var schema = new TR.ArrayTypeRef(coordSchema);
+            var json = ClrEncodeAndDecode(ImmutableArray.Create(new Coordinates(1.0, 2.0), new Coordinates(3.0, 4.0)), schema);
+            Assert.IsNotNull(json);
+            var arr = json!.AsArray();
+            Assert.AreEqual(2, arr.Count);
+            Assert.AreEqual(1.0, arr[0]!.AsObject()["lat"]!.GetValue<double>());
+            Assert.AreEqual(2.0, arr[0]!.AsObject()["lon"]!.GetValue<double>());
+            Assert.AreEqual(3.0, arr[1]!.AsObject()["lat"]!.GetValue<double>());
+            Assert.AreEqual(4.0, arr[1]!.AsObject()["lon"]!.GetValue<double>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeImmutableArrayEnum()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical")));
+            var json = ClrEncodeAndDecode(ImmutableArray.Create(AlarmState.Ok, AlarmState.Warning), schema);
+            Assert.IsNotNull(json);
+            var arr = json!.AsArray();
+            Assert.AreEqual(2, arr.Count);
+            Assert.AreEqual("Ok", arr[0]!.GetValue<string>());
+            Assert.AreEqual("Warning", arr[1]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeImmutableArrayNullableLong()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long)));
+            var json = ClrEncodeAndDecode(ImmutableArray.Create<long?>(1L, null, 2L), schema);
+            Assert.IsNotNull(json);
+            var arr = json!.AsArray();
+            Assert.AreEqual(3, arr.Count);
+            Assert.AreEqual(1L, arr[0]!.GetValue<long>());
+            Assert.IsNull(arr[1]);
+            Assert.AreEqual(2L, arr[2]!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ClrEncodeEmptyImmutableArray()
+        {
+            var schema = new TR.ArrayTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var json = ClrEncodeAndDecode(ImmutableArray<long>.Empty, schema);
             Assert.IsNotNull(json);
             Assert.AreEqual(0, json!.AsArray().Count);
         }
@@ -1012,6 +1327,12 @@ namespace Vion.Contracts.Test.Codec
         private static JsonNode? Roundtrip(JsonNode? input, TR.TypeRef type)
         {
             var bytes = PropertyValueCodec.JsonToFlatBuffer(input, type);
+            return PropertyValueCodec.FlatBufferToJson(bytes);
+        }
+
+        private static JsonNode? ClrEncodeAndDecode(object? clrValue, TR.TypeRef type)
+        {
+            var bytes = PropertyValueCodec.ClrToFlatBuffer(clrValue, type);
             return PropertyValueCodec.FlatBufferToJson(bytes);
         }
     }
