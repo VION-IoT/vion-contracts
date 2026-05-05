@@ -41,7 +41,9 @@ namespace Vion.Contracts.Codec
                 ValuePayload.StringArray => DecodeStringArray(pv.PayloadAsStringArray()),
                 ValuePayload.DateTimeArray => DecodeDateTimeArray(pv.PayloadAsDateTimeArray()),
                 ValuePayload.DurationArray => DecodeDurationArray(pv.PayloadAsDurationArray()),
-                _ => throw new PropertyValueDecodeException($"FlatBufferToJson: unhandled or not-yet-implemented variant '{pv.PayloadType}'."),
+                ValuePayload.StructVal => DecodeStructVal(pv.PayloadAsStructVal()),
+                ValuePayload.StructArray => DecodeStructArray(pv.PayloadAsStructArray()),
+                _ => throw new PropertyValueDecodeException($"FlatBufferToJson: unknown payload type '{pv.PayloadType}'."),
             };
         }
 
@@ -96,6 +98,46 @@ namespace Vion.Contracts.Codec
         private static JsonNode DecodeDurationArray(DurationArray a)
         {
             return DecodeArray(a.TicksLength, a.PresentLength, a.Ticks, a.Present, v => JsonValue.Create(XmlConvert.ToString(TimeSpan.FromTicks(v))));
+        }
+
+        private static JsonObject DecodeStructVal(StructVal s)
+        {
+            var obj = new JsonObject();
+            var len = s.FieldsLength;
+            for (var i = 0; i < len; i++)
+            {
+                var field = s.Fields(i) ?? throw new PropertyValueDecodeException($"FlatBufferToJson: StructVal field at index {i} is null.");
+                var name = field.Name ?? throw new PropertyValueDecodeException($"FlatBufferToJson: StructVal field at index {i} has null Name.");
+                var inner = field.Value ?? throw new PropertyValueDecodeException($"FlatBufferToJson: StructVal field '{name}' has null Value.");
+                obj[name] = DecodePayload(inner);
+            }
+
+            return obj;
+        }
+
+        private static JsonArray DecodeStructArray(StructArray sa)
+        {
+            var len = sa.ItemsLength;
+            var presentLen = sa.PresentLength;
+            if (presentLen > 0 && presentLen != len)
+            {
+                throw new PropertyValueDecodeException($"FlatBufferToJson: StructArray has items[{len}] but present[{presentLen}].");
+            }
+
+            var arr = new JsonArray();
+            for (var i = 0; i < len; i++)
+            {
+                if (presentLen > 0 && !sa.Present(i))
+                {
+                    arr.Add(null);
+                    continue;
+                }
+
+                var item = sa.Items(i) ?? throw new PropertyValueDecodeException($"FlatBufferToJson: StructArray item at index {i} is null.");
+                arr.Add(DecodeStructVal(item));
+            }
+
+            return arr;
         }
     }
 }
