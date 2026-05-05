@@ -155,7 +155,41 @@ namespace Vion.Contracts.TypeRef
 
         private static void ApplyAnnotations(JsonNode node, TypeAnnotations ann)
         {
-            // Filled in by §2.13. No-op until then; primitive tests don't depend on annotations.
+            if (node is not JsonObject obj)
+            {
+                return;
+            }
+
+            // Don't overwrite identity-bearing titles set by BuildEnum or BuildStruct.
+            if (ann.Title is not null && obj["title"] is null)
+            {
+                obj["title"] = ann.Title;
+            }
+
+            if (ann.Description is not null)
+            {
+                obj["description"] = ann.Description;
+            }
+
+            if (ann.Minimum is double mn)
+            {
+                obj["minimum"] = mn;
+            }
+
+            if (ann.Maximum is double mx)
+            {
+                obj["maximum"] = mx;
+            }
+
+            if (ann.Unit is not null)
+            {
+                obj["x-unit"] = ann.Unit;
+            }
+
+            if (ann.ReadOnly)
+            {
+                obj["readOnly"] = true;
+            }
         }
     }
 }

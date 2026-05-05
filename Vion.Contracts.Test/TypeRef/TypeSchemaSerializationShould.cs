@@ -195,5 +195,119 @@ namespace Vion.Contracts.Test.TypeRef
             StringAssert.Contains(actual, "\"type\":[\"object\",\"null\"]");
             StringAssert.Contains(actual, "\"title\":\"Coordinates\"");
         }
+
+        [TestMethod]
+        public void ApplyTitleDescriptionAndConstraintsToPrimitiveSchema()
+        {
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double),
+                                        new TypeAnnotations { Title = "Voltage", Description = "Setpoint", Unit = "V", Minimum = 0, Maximum = 250 },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            // Expected key order: type, format, title, description, minimum, maximum, x-unit
+            var expected = "{\"type\":\"number\",\"format\":\"double\"," + "\"title\":\"Voltage\",\"description\":\"Setpoint\"," +
+                           "\"minimum\":0,\"maximum\":250,\"x-unit\":\"V\"}";
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void EmitReadOnlyKeyOnlyWhenAnnotationIsTrue()
+        {
+            var off = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double), new TypeAnnotations { ReadOnly = false }, ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var on = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double), new TypeAnnotations { ReadOnly = true }, ImmutableDictionary<string, TypeAnnotations>.Empty);
+
+            Assert.DoesNotContain(off.ToJsonSchema().ToJsonString(), "readOnly");
+            StringAssert.Contains(on.ToJsonSchema().ToJsonString(), "\"readOnly\":true");
+        }
+
+        [TestMethod]
+        public void EmitNoAnnotationKeysWhenAnnotationsAreNone()
+        {
+            var schema = TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double));
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            // Only the type/format keys from BuildPrimitive — no annotation keys.
+            Assert.AreEqual("{\"type\":\"number\",\"format\":\"double\"}", actual);
+        }
+
+        [TestMethod]
+        public void DoNotOverwriteIdentityBearingEnumTitle()
+        {
+            // Enum's Title is identity-bearing on EnumTypeRef and set by BuildEnum.
+            // Even if a property-level annotation provides a different Title, the
+            // identity-bearing one must win.
+            var schema = new TypeSchema(new EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning")),
+                                        new TypeAnnotations { Title = "PropertyLevelTitle" },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"title\":\"AlarmState\"");
+            Assert.DoesNotContain(actual, "\"title\":\"PropertyLevelTitle\"");
+        }
+
+        [TestMethod]
+        public void DoNotOverwriteIdentityBearingStructTitle()
+        {
+            var struc = new StructTypeRef("Coordinates", ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double))), ImmutableArray.Create("lat"));
+            var schema = new TypeSchema(struc, new TypeAnnotations { Title = "PropertyLevelTitle" }, ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"title\":\"Coordinates\"");
+            Assert.DoesNotContain(actual, "\"title\":\"PropertyLevelTitle\"");
+        }
+
+        [TestMethod]
+        public void ApplyPerStructFieldAnnotationsToSubschemas()
+        {
+            // The spec §5.1 worked example for Coordinates3D: each struct field has its own annotations.
+            var s = new StructTypeRef("Coordinates3D",
+                                      ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("altitude", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("lat", "lon", "altitude"));
+            var sfa = ImmutableDictionary<string, TypeAnnotations>.Empty
+                                                                  .Add("lat", new TypeAnnotations { Unit = "deg", Minimum = -90, Maximum = 90 })
+                                                                  .Add("lon", new TypeAnnotations { Unit = "deg", Minimum = -180, Maximum = 180 })
+                                                                  .Add("altitude", new TypeAnnotations { Unit = "m" });
+            var schema = new TypeSchema(s, TypeAnnotations.None, sfa);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            // Each subschema should carry its own annotations.
+            StringAssert.Contains(actual, "\"lat\":{\"type\":\"number\",\"format\":\"double\",\"minimum\":-90,\"maximum\":90,\"x-unit\":\"deg\"}");
+            StringAssert.Contains(actual, "\"lon\":{\"type\":\"number\",\"format\":\"double\",\"minimum\":-180,\"maximum\":180,\"x-unit\":\"deg\"}");
+            StringAssert.Contains(actual, "\"altitude\":{\"type\":\"number\",\"format\":\"double\",\"x-unit\":\"m\"}");
+        }
+
+        [TestMethod]
+        public void ApplyAnnotationsToBothArrayAndItemsForArrayProperty()
+        {
+            // Per spec §5.1 array convention: x-unit etc. propagate to both `items` and the array node
+            // (via BuildArray passing annotations through to the recursive BuildSchema, plus the outer
+            // ApplyAnnotations call).
+            var schema = new TypeSchema(new ArrayTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                        new TypeAnnotations { Unit = "V" },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            // x-unit on items
+            StringAssert.Contains(actual, "\"items\":{\"type\":\"number\",\"format\":\"double\",\"x-unit\":\"V\"}");
+
+            // x-unit on the array node itself (after items)
+            StringAssert.Contains(actual, "\"x-unit\":\"V\"}");
+        }
+
+        [TestMethod]
+        public void DoNotApplyOuterAnnotationsTwiceOnNullablePrimitive()
+        {
+            // BuildNullable passes empty annotations into the recursive BuildSchema (Task G fix),
+            // so annotations are applied exactly once at the outer level.
+            var schema = new TypeSchema(new NullableTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                        new TypeAnnotations { Unit = "V", Minimum = 0 },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            var expected = "{\"type\":[\"number\",\"null\"],\"format\":\"double\"," + "\"minimum\":0,\"x-unit\":\"V\"}";
+            Assert.AreEqual(expected, actual);
+        }
     }
 }
