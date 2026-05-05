@@ -396,6 +396,18 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
+        public void RoundtripNullableStruct()
+        {
+            var struc = new StructTypeRef("Coordinates",
+                                          ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                                new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                          ImmutableArray.Create("lat", "lon"));
+            var original = TypeSchema.Of(new NullableTypeRef(struc));
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        [TestMethod]
         public void RoundtripArrayOfNullableStruct()
         {
             var struc = new StructTypeRef("Coordinates",
