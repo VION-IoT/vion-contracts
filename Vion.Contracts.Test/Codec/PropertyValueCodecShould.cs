@@ -1,9 +1,13 @@
 using System;
+using System.Globalization;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Xml;
 using Google.FlatBuffers;
 using Vion.Contracts.Codec;
 using Vion.Contracts.FlatBuffers.Common;
+using TR = Vion.Contracts.TypeRef;
 
 namespace Vion.Contracts.Test.Codec
 {
@@ -328,6 +332,149 @@ namespace Vion.Contracts.Test.Codec
             Assert.AreEqual(0, json!.AsArray().Count);
         }
 
+        // ── Round-trip tests (JsonToFlatBuffer → FlatBufferToJson) ────────────
+
+        [TestMethod]
+        public void RoundtripBool()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Bool);
+            var rt = Roundtrip(JsonValue.Create(true), schema);
+            Assert.IsTrue(rt!.GetValue<bool>());
+        }
+
+        [TestMethod]
+        public void RoundtripString()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.String);
+            var rt = Roundtrip(JsonValue.Create("hello"), schema);
+            Assert.AreEqual("hello", rt!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundtripByte()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Byte);
+            var rt = Roundtrip(JsonNode.Parse("200"), schema);
+            Assert.AreEqual(200L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripShort()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Short);
+            var rt = Roundtrip(JsonNode.Parse("1000"), schema);
+            Assert.AreEqual(1000L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripUShort()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UShort);
+            var rt = Roundtrip(JsonNode.Parse("60000"), schema);
+            Assert.AreEqual(60000L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripInt()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Int);
+            var rt = Roundtrip(JsonNode.Parse("2147483647"), schema);
+            Assert.AreEqual(2147483647L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripUInt()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UInt);
+            var rt = Roundtrip(JsonNode.Parse("4294967295"), schema);
+            Assert.AreEqual(4294967295L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripLong()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            var rt = Roundtrip(JsonNode.Parse("9876543210"), schema);
+            Assert.AreEqual(9876543210L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void RoundtripFloat()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Float);
+            var rt = Roundtrip(JsonNode.Parse("3.14"), schema);
+            Assert.AreEqual(3.14, rt!.GetValue<double>(), 0.001);
+        }
+
+        [TestMethod]
+        public void RoundtripDouble()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double);
+            var rt = Roundtrip(JsonNode.Parse("2.718281828"), schema);
+            Assert.AreEqual(2.718281828, rt!.GetValue<double>(), 1e-9);
+        }
+
+        [TestMethod]
+        public void RoundtripDateTime()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.DateTime);
+            const string input = "2024-06-03T12:34:56Z";
+            var rt = Roundtrip(JsonValue.Create(input), schema);
+            var parsedRt = DateTimeOffset.Parse(rt!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            var parsedInput = DateTimeOffset.Parse(input, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            Assert.AreEqual(parsedInput.UtcDateTime, parsedRt.UtcDateTime);
+        }
+
+        [TestMethod]
+        public void RoundtripDuration()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Duration);
+            const string input = "PT1H30M";
+            var rt = Roundtrip(JsonValue.Create(input), schema);
+            var parsedRt = XmlConvert.ToTimeSpan(rt!.GetValue<string>());
+            var parsedInput = XmlConvert.ToTimeSpan(input);
+            Assert.AreEqual(parsedInput, parsedRt);
+        }
+
+        [TestMethod]
+        public void RoundtripNullablePrimitive_NullValue()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var rt = Roundtrip(null, schema);
+            Assert.IsNull(rt);
+        }
+
+        [TestMethod]
+        public void RoundtripNullablePrimitive_NonNullValue()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long));
+            var rt = Roundtrip(JsonNode.Parse("42"), schema);
+            Assert.AreEqual(42L, rt!.GetValue<long>());
+        }
+
+        [TestMethod]
+        public void ThrowsOnNullForNonNullableType()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(null, schema));
+        }
+
+        [TestMethod]
+        public void RoundtripEnumMemberName()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var rt = Roundtrip(JsonValue.Create("Warning"), schema);
+            Assert.AreEqual("Warning", rt!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void EncoderDoesNotValidateEnumMembership()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var rt = Roundtrip(JsonValue.Create("NotAMember"), schema);
+            Assert.AreEqual("NotAMember", rt!.GetValue<string>());
+        }
+
         private static byte[] BuildBoolVal(bool v)
         {
             var builder = new FlatBufferBuilder(64);
@@ -600,6 +747,12 @@ namespace Vion.Contracts.Test.Codec
             var pv = PropertyValue.CreatePropertyValue(builder, ValuePayload.StructArray, sa.Value);
             builder.Finish(pv.Value);
             return builder.SizedByteArray();
+        }
+
+        private static JsonNode? Roundtrip(JsonNode? input, TR.TypeRef type)
+        {
+            var bytes = PropertyValueCodec.JsonToFlatBuffer(input, type);
+            return PropertyValueCodec.FlatBufferToJson(bytes);
         }
     }
 }

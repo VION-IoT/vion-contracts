@@ -1,8 +1,10 @@
 using System;
+using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Xml;
 using Google.FlatBuffers;
 using Vion.Contracts.FlatBuffers.Common;
+using TR = Vion.Contracts.TypeRef;
 
 namespace Vion.Contracts.Codec
 {
@@ -138,6 +140,76 @@ namespace Vion.Contracts.Codec
             }
 
             return arr;
+        }
+
+        // ── Encode ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        ///     Encodes a JSON value into a serialized <c>PropertyValue</c> FlatBuffer using
+        ///     <paramref name="type"/> to choose the wire variant (e.g. <c>42</c> as Long vs Double,
+        ///     <c>"hi"</c> as String vs DateTime vs enum). Null with a <see cref="TR.NullableTypeRef"/>
+        ///     encodes as <c>NONE</c>.
+        /// </summary>
+        public static byte[] JsonToFlatBuffer(JsonNode? json, TR.TypeRef type)
+        {
+            var builder = new FlatBufferBuilder(64);
+            var (payloadType, payloadOffset) = EncodeValue(builder, json, type);
+            var pv = PropertyValue.CreatePropertyValue(builder, payloadType, payloadOffset);
+            builder.Finish(pv.Value);
+            return builder.SizedByteArray();
+        }
+
+        private static (ValuePayload PayloadType, int PayloadOffset) EncodeValue(FlatBufferBuilder b, JsonNode? json, TR.TypeRef type)
+        {
+            if (type is TR.NullableTypeRef n)
+            {
+                if (json is null)
+                    return (ValuePayload.NONE, 0);
+
+                return EncodeValue(b, json, n.Inner);
+            }
+
+            if (json is null)
+                throw new PropertyValueDecodeException($"JsonToFlatBuffer: null value is not valid for non-nullable type '{type.GetType().Name}'.");
+
+            return type switch
+            {
+                TR.PrimitiveTypeRef p => EncodePrimitive(b, json, p),
+                TR.EnumTypeRef _ => EncodeEnum(b, json),
+
+                // StructTypeRef and ArrayTypeRef are added in the next dispatch
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unhandled or not-yet-implemented schema type '{type.GetType().Name}'.")
+            };
+        }
+
+        private static (ValuePayload, int) EncodePrimitive(FlatBufferBuilder b, JsonNode json, TR.PrimitiveTypeRef p) =>
+            p.Kind switch
+            {
+                TR.PrimitiveKind.Bool => (ValuePayload.BoolVal, BoolVal.CreateBoolVal(b, json.GetValue<bool>()).Value),
+                TR.PrimitiveKind.String => (ValuePayload.StringVal, StringVal.CreateStringVal(b, b.CreateString(json.GetValue<string>())).Value),
+
+                TR.PrimitiveKind.Byte or TR.PrimitiveKind.Short or TR.PrimitiveKind.UShort or TR.PrimitiveKind.Int or TR.PrimitiveKind.UInt or TR.PrimitiveKind.Long =>
+                    (ValuePayload.LongVal, LongVal.CreateLongVal(b, json.GetValue<long>()).Value),
+
+                TR.PrimitiveKind.Float or TR.PrimitiveKind.Double => (ValuePayload.DoubleVal, DoubleVal.CreateDoubleVal(b, json.GetValue<double>()).Value),
+
+                TR.PrimitiveKind.DateTime => (ValuePayload.DateTimeVal,
+                                                 DateTimeVal.CreateDateTimeVal(b,
+                                                                               DateTimeOffset.Parse(json.GetValue<string>(),
+                                                                                                    CultureInfo.InvariantCulture,
+                                                                                                    DateTimeStyles.RoundtripKind)
+                                                                                             .ToUnixTimeMilliseconds())
+                                                            .Value),
+
+                TR.PrimitiveKind.Duration => (ValuePayload.DurationVal, DurationVal.CreateDurationVal(b, XmlConvert.ToTimeSpan(json.GetValue<string>()).Ticks).Value),
+
+                _ => throw new PropertyValueDecodeException($"JsonToFlatBuffer: unknown PrimitiveKind '{p.Kind}'.")
+            };
+
+        private static (ValuePayload, int) EncodeEnum(FlatBufferBuilder b, JsonNode json)
+        {
+            var name = json.GetValue<string>();
+            return (ValuePayload.StringVal, StringVal.CreateStringVal(b, b.CreateString(name)).Value);
         }
     }
 }
