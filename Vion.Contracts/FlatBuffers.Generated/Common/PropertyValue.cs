@@ -16,6 +16,7 @@ public struct PropertyValue : IFlatbufferObject
   public static void ValidateVersion() { FlatBufferConstants.FLATBUFFERS_25_2_10(); }
   public static PropertyValue GetRootAsPropertyValue(ByteBuffer _bb) { return GetRootAsPropertyValue(_bb, new PropertyValue()); }
   public static PropertyValue GetRootAsPropertyValue(ByteBuffer _bb, PropertyValue obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
+  public static bool VerifyPropertyValue(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer("", false, PropertyValueVerify.Verify); }
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public PropertyValue __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
@@ -52,6 +53,8 @@ public struct PropertyValue : IFlatbufferObject
     int o = builder.EndTable();
     return new Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue>(o);
   }
+  public static void FinishPropertyValueBuffer(FlatBufferBuilder builder, Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue> offset) { builder.Finish(offset.Value); }
+  public static void FinishSizePrefixedPropertyValueBuffer(FlatBufferBuilder builder, Offset<Vion.Contracts.FlatBuffers.Common.PropertyValue> offset) { builder.FinishSizePrefixed(offset.Value); }
 }
 
 

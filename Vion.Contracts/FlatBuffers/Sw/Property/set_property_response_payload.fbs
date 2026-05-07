@@ -1,9 +1,0 @@
-include "Common/property_value.fbs";
-
-namespace Vion.Contracts.FlatBuffers.Sw.Property;
-
-table SetPropertyResponsePayload {
-  value:Vion.Contracts.FlatBuffers.Common.PropertyValue;
-}
-
-root_type SetPropertyResponsePayload;
