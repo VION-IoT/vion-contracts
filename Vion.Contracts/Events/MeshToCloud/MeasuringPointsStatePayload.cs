@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 
 namespace Vion.Contracts.Events.MeshToCloud
 {
@@ -23,7 +24,7 @@ namespace Vion.Contracts.Events.MeshToCloud
 
             public required List<MeasuringPoint> MeasuringPoints { get; set; } = [];
 
-            public readonly record struct MeasuringPoint(string Identifier, object Value);
+            public readonly record struct MeasuringPoint(string Identifier, JsonNode? Value);
         }
     }
 }

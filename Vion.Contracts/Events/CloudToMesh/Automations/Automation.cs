@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 
 namespace Vion.Contracts.Events.CloudToMesh.Automations
 {
@@ -37,7 +38,11 @@ namespace Vion.Contracts.Events.CloudToMesh.Automations
 
                 public ParameterType Type { get; set; }
 
-                public string? ValueType { get; set; } // ServiceElementType, Relevant for Property and MeasuringPoint parameter tpes
+                /// <summary>
+                ///     JSON Schema 2020-12 (Dale profile) describing the referenced state value.
+                ///     Required for <see cref="ParameterType.Property" /> and <see cref="ParameterType.MeasuringPoint" /> parameters.
+                /// </summary>
+                public JsonNode? Schema { get; set; }
             }
         }
 
@@ -71,9 +76,13 @@ namespace Vion.Contracts.Events.CloudToMesh.Automations
 
                 public required string Identifier { get; set; }
 
-                public object? Value { get; set; }
+                public JsonNode? Value { get; set; }
 
-                public string? ValueType { get; set; } // ServiceElementType, Relevant for SetProperty action type
+                /// <summary>
+                ///     JSON Schema 2020-12 (Dale profile) describing the value type of the target property.
+                ///     Required for <see cref="ActionType.SetProperty" /> actions.
+                /// </summary>
+                public JsonNode? Schema { get; set; }
             }
         }
 
