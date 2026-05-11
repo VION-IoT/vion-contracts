@@ -290,3 +290,8 @@ __pycache__/
 *.odx.cs
 *.xsd.cs
 
+
+# Cross-repo planning lives in the architecture repo (decision 0011).
+# This repo never tracks Claude tooling state or planning artifacts.
+.claude/
+docs/superpowers/
