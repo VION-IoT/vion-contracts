@@ -5,7 +5,8 @@ using System.Linq;
 namespace Vion.Contracts.TypeRef
 {
     /// <summary>
-    ///     UI hints for a property — display name override, grouping, ordering, severity mappings.
+    ///     UI hints for a property — display name override, grouping, ordering, severity mappings,
+    ///     enum-member display labels.
     ///     Advisory only: codec and Mesh ignore these. Cloud + dashboard consume them when rendering.
     /// </summary>
     public sealed record Presentation
@@ -28,11 +29,21 @@ namespace Vion.Contracts.TypeRef
 
         public ImmutableDictionary<string, string>? StatusMappings { get; init; }
 
+        /// <summary>
+        ///     Display labels per enum member name, when the property's schema is an enum.
+        ///     Populated from <c>[EnumValueInfo("...")]</c> on enum members. Map key is the CLR
+        ///     member name (matches the wire value per spec §5.4); map value is the human-readable
+        ///     label the dashboard should show. Members without a display label are omitted from
+        ///     the map; consumers fall back to the member name when no label is present.
+        /// </summary>
+        public ImmutableDictionary<string, string>? EnumLabels { get; init; }
+
         public bool IsEmpty
         {
             get =>
                 DisplayName is null && Group is null && Order is null && Category is null && Importance is null && UIHint is null && Decimals is null &&
-                (StatusMappings is null || StatusMappings.IsEmpty);
+                (StatusMappings is null || StatusMappings.IsEmpty) &&
+                (EnumLabels is null || EnumLabels.IsEmpty);
         }
 
         /// <inheritdoc />
@@ -83,19 +94,17 @@ namespace Vion.Contracts.TypeRef
                 return false;
             }
 
-            var leftMappings = StatusMappings;
-            var rightMappings = other.StatusMappings;
-            if (leftMappings is null && rightMappings is null)
-            {
-                return true;
-            }
-
-            if (leftMappings is null || rightMappings is null)
+            if (!DictionariesEqual(StatusMappings, other.StatusMappings))
             {
                 return false;
             }
 
-            return leftMappings.Count == rightMappings.Count && leftMappings.OrderBy(kv => kv.Key).SequenceEqual(rightMappings.OrderBy(kv => kv.Key));
+            if (!DictionariesEqual(EnumLabels, other.EnumLabels))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <inheritdoc />
@@ -109,16 +118,38 @@ namespace Vion.Contracts.TypeRef
             hash.Add(Importance);
             hash.Add(UIHint);
             hash.Add(Decimals);
-            if (StatusMappings is not null)
+            AddDictionary(ref hash, StatusMappings);
+            AddDictionary(ref hash, EnumLabels);
+            return hash.ToHashCode();
+        }
+
+        private static bool DictionariesEqual(ImmutableDictionary<string, string>? left, ImmutableDictionary<string, string>? right)
+        {
+            if (left is null && right is null)
             {
-                foreach (var kv in StatusMappings.OrderBy(kv => kv.Key))
-                {
-                    hash.Add(kv.Key);
-                    hash.Add(kv.Value);
-                }
+                return true;
             }
 
-            return hash.ToHashCode();
+            if (left is null || right is null)
+            {
+                return false;
+            }
+
+            return left.Count == right.Count && left.OrderBy(kv => kv.Key).SequenceEqual(right.OrderBy(kv => kv.Key));
+        }
+
+        private static void AddDictionary(ref HashCode hash, ImmutableDictionary<string, string>? dict)
+        {
+            if (dict is null)
+            {
+                return;
+            }
+
+            foreach (var kv in dict.OrderBy(kv => kv.Key))
+            {
+                hash.Add(kv.Key);
+                hash.Add(kv.Value);
+            }
         }
     }
 }

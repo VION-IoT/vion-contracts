@@ -123,10 +123,15 @@ namespace Vion.Contracts.TypeRef
 
         private static JsonObject BuildArray(ArrayTypeRef a, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
-            // Recurse into the items type, passing annotations through. The outer BuildSchema's
-            // ApplyAnnotations call will also apply annotations to the array node itself —
-            // by spec §5.1 convention, x-unit etc. live on both the array and its items.
-            var items = BuildSchema(a.Items, ann, sfa);
+            // Property-level annotations (title, x-unit, readOnly) belong on the array root
+            // only, not the items subschema — `items` describes the element SHAPE; property-level
+            // labels and units describe the property as a whole. The outer BuildSchema's
+            // ApplyAnnotations call applies them to the array node we return.
+            //
+            // StructFieldAnnotations (sfa) DO pass through, because for array-of-struct the per-field
+            // [StructField] data needs to reach the inner struct's properties (e.g. Lat/Lon with
+            // their own x-unit "°"). That's an element-shape concern, not a property concern.
+            var items = BuildSchema(a.Items, TypeAnnotations.None, sfa);
             return new JsonObject
                    {
                        ["type"] = "array",
@@ -142,8 +147,8 @@ namespace Vion.Contracts.TypeRef
             // (ann, sfa) here, ApplyAnnotations would fire twice on the same object (the inner
             // BuildSchema would apply them, and the outer one would apply them again). Currently a
             // no-op since §2.13 hasn't landed; setting up the right shape now avoids latent bugs.
-            // Note: BuildArray passes (ann, sfa) through deliberately — the spec §5.1 array convention
-            // wants x-unit etc. on both `items` and the array node, which the double-apply produces.
+            // Note: BuildArray passes only sfa (NOT ann) through — property-level annotations
+            // belong on the array root only; the items subschema carries element-shape concerns.
             var inner = BuildSchema(n.Inner, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
             if (inner is not JsonObject obj)
             {
@@ -391,14 +396,12 @@ namespace Vion.Contracts.TypeRef
         {
             var items = obj["items"] ?? throw new InvalidSchemaException("Array schema must include 'items'");
 
-            // We deliberately discard item-level annotations. Per spec §5.1 array convention, x-unit
-            // and other annotations live on the outer array node — the items annotations from
-            // ToJsonSchema are a redundant copy (BuildArray double-emits to both). For externally-
-            // generated schemas that put annotations only on `items`, this is a known data-loss path;
-            // accepted as v1 behavior because (a) the only producer today is our own ToJsonSchema, and
-            // (b) the alternative (lift item annotations when outer has none) introduces ambiguity
-            // when both levels are populated. Revisit if a third-party schema source becomes a real
-            // consumer.
+            // Property-level annotations (title, x-unit, readOnly) belong on the array root
+            // — items only carries element-shape concerns (type, format, enum, struct properties,
+            // nullable type-array). The producer side (BuildArray) emits them only on the array
+            // root, so for our own schemas no item-level annotations are expected here. If a
+            // third-party schema source puts them on items, we ignore them; the array root is
+            // the only authoritative location.
             var (itemType, _itemAnnotationsIgnored, sfa) = ParseNode(items);
             if (itemType is ArrayTypeRef)
             {

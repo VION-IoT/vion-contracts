@@ -279,21 +279,25 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
-        public void ApplyAnnotationsToBothArrayAndItemsForArrayProperty()
+        public void ApplyPropertyAnnotationsOnlyToArrayRootNotItems()
         {
-            // Per spec §5.1 array convention: x-unit etc. propagate to both `items` and the array node
-            // (via BuildArray passing annotations through to the recursive BuildSchema, plus the outer
-            // ApplyAnnotations call).
+            // Property-level annotations (title, x-unit, readOnly) describe the property as a whole
+            // and belong on the array root only. `items` carries element-shape concerns only —
+            // including it there would be confusing for consumers and verbose on the wire.
             var schema = new TypeSchema(new ArrayTypeRef(new PrimitiveTypeRef(PrimitiveKind.Double)),
-                                        new TypeAnnotations { Unit = "V" },
+                                        new TypeAnnotations { Title = "Bearings", Unit = "deg" },
                                         ImmutableDictionary<string, TypeAnnotations>.Empty);
             var actual = schema.ToJsonSchema().ToJsonString();
 
-            // x-unit on items
-            StringAssert.Contains(actual, "\"items\":{\"type\":\"number\",\"format\":\"double\",\"x-unit\":\"V\"}");
+            // items: element shape only, no x-unit / title
+            StringAssert.Contains(actual, "\"items\":{\"type\":\"number\",\"format\":\"double\"}");
 
-            // x-unit on the array node itself (after items)
-            StringAssert.Contains(actual, "\"x-unit\":\"V\"}");
+            // x-unit + title on the array root
+            StringAssert.Contains(actual, "\"x-unit\":\"deg\"");
+            StringAssert.Contains(actual, "\"title\":\"Bearings\"");
+
+            // Make sure x-unit doesn't appear inside `items`.
+            Assert.DoesNotContain("\"items\":{\"type\":\"number\",\"format\":\"double\",\"x-unit\"", actual);
         }
 
         [TestMethod]
