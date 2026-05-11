@@ -31,7 +31,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeBoolValTrueAsJsonBool()
         {
             var bytes = BuildBoolVal(true);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.IsTrue(json!.GetValue<bool>());
         }
@@ -40,7 +40,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeBoolValFalseAsJsonBool()
         {
             var bytes = BuildBoolVal(false);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.IsFalse(json!.GetValue<bool>());
         }
@@ -49,7 +49,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeLongValAsJsonLong()
         {
             var bytes = BuildLongVal(9876543210L);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual(9876543210L, json!.GetValue<long>());
         }
@@ -58,7 +58,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeDoubleValAsJsonDouble()
         {
             var bytes = BuildDoubleVal(3.14159);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual(3.14159, json!.GetValue<double>());
         }
@@ -67,7 +67,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeStringValAsJsonString()
         {
             var bytes = BuildStringVal("hello world");
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual("hello world", json!.GetValue<string>());
         }
@@ -77,7 +77,7 @@ namespace Vion.Contracts.Test.Codec
         {
             const long unixMs = 1717372800000L;
             var bytes = BuildDateTimeVal(unixMs);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var expected = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).UtcDateTime.ToString("o");
             Assert.AreEqual(expected, json!.GetValue<string>());
@@ -89,7 +89,7 @@ namespace Vion.Contracts.Test.Codec
             // 90 minutes = 54_000_000_000 ticks
             const long ticks = 54_000_000_000L;
             var bytes = BuildDurationVal(ticks);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var expected = XmlConvert.ToString(TimeSpan.FromTicks(ticks));
             Assert.AreEqual(expected, json!.GetValue<string>());
@@ -99,7 +99,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeNonePayloadAsNull()
         {
             var bytes = BuildNoneVal();
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNull(json);
         }
 
@@ -108,14 +108,14 @@ namespace Vion.Contracts.Test.Codec
         {
             // Forge a PropertyValue with an out-of-range payload tag; exercises the codec's default-throw branch.
             var bytes = BuildPropertyValueWithRawTag((ValuePayload)99);
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(bytes));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes)));
         }
 
         [TestMethod]
         public void DecodeStructValWithSinglePrimitiveField()
         {
             var bytes = BuildStructValAllDoubles(("lat", 47.3));
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var obj = json!.AsObject();
             Assert.AreEqual(1, obj.Count);
@@ -126,7 +126,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeStructValWithMultipleFields()
         {
             var bytes = BuildStructValAllDoubles(("lat", 47.3), ("lon", 8.5), ("altitude", 423.0));
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var obj = json!.AsObject();
             Assert.AreEqual(3, obj.Count);
@@ -139,7 +139,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeStructValPreservesFieldOrder()
         {
             var bytes = BuildStructValAllDoubles(("a", 1.0), ("b", 2.0), ("c", 3.0));
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var keys = json!.AsObject().Select(kvp => kvp.Key).ToArray();
             Assert.AreEqual("a", keys[0]);
@@ -157,7 +157,7 @@ namespace Vion.Contracts.Test.Codec
                                                                   return (ValuePayload.StringVal, StringVal.CreateStringVal(b, s).Value);
                                                               }),
                                                     ("active", b => (ValuePayload.BoolVal, BoolVal.CreateBoolVal(b, true).Value)));
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var obj = json!.AsObject();
             Assert.AreEqual(3, obj.Count);
@@ -170,7 +170,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeEmptyStructValAsEmptyJsonObject()
         {
             var bytes = BuildStructValBytes();
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual(0, json!.AsObject().Count);
         }
@@ -179,14 +179,14 @@ namespace Vion.Contracts.Test.Codec
         public void ThrowsOnStructValFieldWithNullValue()
         {
             var bytes = BuildStructValWithNullFieldValue("foo");
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(bytes));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes)));
         }
 
         [TestMethod]
         public void DecodeStructArrayAsJsonArrayOfObjects()
         {
             var bytes = BuildStructArrayBytes(new[] { new[] { ("lat", 47.3), ("lon", 8.5) }, new[] { ("lat", 48.1), ("lon", 9.2) } });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(2, arr.Count);
@@ -202,7 +202,7 @@ namespace Vion.Contracts.Test.Codec
             // items=[coords0, coords1, coords2], present=[true, false, true] → [obj, null, obj]
             var bytes = BuildStructArrayBytesWithPresent(new[] { new[] { ("lat", 1.0), ("lon", 2.0) }, new[] { ("lat", 3.0), ("lon", 4.0) }, new[] { ("lat", 5.0), ("lon", 6.0) } },
                                                          new[] { true, false, true });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -217,7 +217,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeEmptyStructArrayAsEmptyJsonArray()
         {
             var bytes = BuildStructArrayBytes(Array.Empty<(string, double)[]>());
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual(0, json!.AsArray().Count);
         }
@@ -227,14 +227,14 @@ namespace Vion.Contracts.Test.Codec
         {
             // items=[a, b], present=[true] → mismatched lengths → PropertyValueDecodeException
             var bytes = BuildStructArrayBytesWithPresent(new[] { new[] { ("x", 1.0) }, new[] { ("x", 2.0) } }, new[] { true });
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(bytes));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes)));
         }
 
         [TestMethod]
         public void DecodeBoolArrayWithoutPresentAsJsonArray()
         {
             var bytes = BuildBoolArrayVal(new[] { true, false, true });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -247,7 +247,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeLongArrayAsJsonArray()
         {
             var bytes = BuildLongArrayVal(new[] { 1L, 9876543210L, -42L });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -260,7 +260,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeDoubleArrayAsJsonArray()
         {
             var bytes = BuildDoubleArrayVal(new[] { 1.1, 2.2, 3.3 });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -273,7 +273,7 @@ namespace Vion.Contracts.Test.Codec
         public void DecodeStringArrayAsJsonArray()
         {
             var bytes = BuildStringArrayVal(new[] { "alpha", "beta", "gamma" });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -287,7 +287,7 @@ namespace Vion.Contracts.Test.Codec
         {
             var unixMsValues = new[] { 0L, 1717372800000L, 1000000000000L };
             var bytes = BuildDateTimeArrayVal(unixMsValues);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -303,7 +303,7 @@ namespace Vion.Contracts.Test.Codec
         {
             var ticksValues = new[] { 0L, 54_000_000_000L, 36_000_000_000L };
             var bytes = BuildDurationArrayVal(ticksValues);
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -319,7 +319,7 @@ namespace Vion.Contracts.Test.Codec
         {
             // values=[true, false, false], present=[true, false, true] → [true, null, false]
             var bytes = BuildBoolArrayValWithPresent(new[] { true, false, false }, new[] { true, false, true });
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             var arr = json!.AsArray();
             Assert.AreEqual(3, arr.Count);
@@ -333,14 +333,14 @@ namespace Vion.Contracts.Test.Codec
         {
             // values=[true, false], present=[true] → mismatched lengths → PropertyValueDecodeException
             var bytes = BuildBoolArrayValWithPresent(new[] { true, false }, new[] { true });
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(bytes));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes)));
         }
 
         [TestMethod]
         public void DecodeEmptyArrayAsEmptyJsonArray()
         {
             var bytes = BuildBoolArrayVal(Array.Empty<bool>());
-            var json = PropertyValueCodec.FlatBufferToJson(bytes);
+            var json = PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
             Assert.IsNotNull(json);
             Assert.AreEqual(0, json!.AsArray().Count);
         }
@@ -1149,7 +1149,7 @@ namespace Vion.Contracts.Test.Codec
             var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
             var byteSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Byte);
             var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(300L), longSchema);
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, byteSchema, typeof(byte)));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), byteSchema, typeof(byte)));
         }
 
         [TestMethod]
@@ -1158,7 +1158,7 @@ namespace Vion.Contracts.Test.Codec
             var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
             var ushortSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UShort);
             var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(70000L), longSchema);
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, ushortSchema, typeof(ushort)));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), ushortSchema, typeof(ushort)));
         }
 
         [TestMethod]
@@ -1167,7 +1167,7 @@ namespace Vion.Contracts.Test.Codec
             var longSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Long);
             var uintSchema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.UInt);
             var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create(-1L), longSchema);
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, uintSchema, typeof(uint)));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), uintSchema, typeof(uint)));
         }
 
         [TestMethod]
@@ -1182,7 +1182,7 @@ namespace Vion.Contracts.Test.Codec
         {
             var enumSchema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
             var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonValue.Create("NotAMember"), enumSchema);
-            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(bytes, enumSchema, typeof(AlarmState)));
+            Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), enumSchema, typeof(AlarmState)));
         }
 
         [TestMethod]
@@ -1224,7 +1224,7 @@ namespace Vion.Contracts.Test.Codec
                                                                     new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
                                               ImmutableArray.Create("lat", "lon"));
             var bytes = PropertyValueCodec.JsonToFlatBuffer(JsonNode.Parse("{\"lon\":8.5,\"lat\":47.3}"), schema);
-            var result = (Coordinates)PropertyValueCodec.FlatBufferToClr(bytes, schema, typeof(Coordinates))!;
+            var result = (Coordinates)PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), schema, typeof(Coordinates))!;
             Assert.AreEqual(47.3, result.Lat, 1e-9);
             Assert.AreEqual(8.5, result.Lon, 1e-9);
         }
@@ -1543,14 +1543,14 @@ namespace Vion.Contracts.Test.Codec
         private static T ClrRoundtrip<T>(T value, TR.TypeRef type)
         {
             var bytes = PropertyValueCodec.ClrToFlatBuffer(value, type);
-            return (T)PropertyValueCodec.FlatBufferToClr(bytes, type, typeof(T))!;
+            return (T)PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), type, typeof(T))!;
         }
 
         private static T? ClrRoundtripNullable<T>(T? value, TR.TypeRef type)
             where T : struct
         {
             var bytes = PropertyValueCodec.ClrToFlatBuffer(value, type);
-            return (T?)PropertyValueCodec.FlatBufferToClr(bytes, type, typeof(T?));
+            return (T?)PropertyValueCodec.FlatBufferToClr(new ByteBuffer(bytes), type, typeof(T?));
         }
 
         private static byte[] BuildBoolVal(bool v)
@@ -1830,13 +1830,13 @@ namespace Vion.Contracts.Test.Codec
         private static JsonNode? Roundtrip(JsonNode? input, TR.TypeRef type)
         {
             var bytes = PropertyValueCodec.JsonToFlatBuffer(input, type);
-            return PropertyValueCodec.FlatBufferToJson(bytes);
+            return PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
         }
 
         private static JsonNode? ClrEncodeAndDecode(object? clrValue, TR.TypeRef type)
         {
             var bytes = PropertyValueCodec.ClrToFlatBuffer(clrValue, type);
-            return PropertyValueCodec.FlatBufferToJson(bytes);
+            return PropertyValueCodec.FlatBufferToJson(new ByteBuffer(bytes));
         }
     }
 }

@@ -37,10 +37,9 @@ namespace Vion.Contracts.Codec
         ///     Decodes a serialized <c>PropertyValue</c> FlatBuffer into a JSON value.
         ///     Returns <c>null</c> when the union payload is <c>NONE</c> (the wire encoding of a null value).
         /// </summary>
-        public static JsonNode? FlatBufferToJson(ReadOnlySpan<byte> bytes)
+        public static JsonNode? FlatBufferToJson(ByteBuffer byteBuffer)
         {
-            var bb = new ByteBuffer(bytes.ToArray());
-            var pv = PropertyValue.GetRootAsPropertyValue(bb);
+            var pv = PropertyValue.GetRootAsPropertyValue(byteBuffer);
             return DecodePayload(pv);
         }
 
@@ -80,9 +79,9 @@ namespace Vion.Contracts.Codec
         ///     <see cref="ImmutableArray{T}" /> construction. Returns <c>null</c> when the wire
         ///     payload is <c>NONE</c> and <paramref name="type" /> is <see cref="TR.NullableTypeRef" />.
         /// </summary>
-        public static object? FlatBufferToClr(ReadOnlySpan<byte> bytes, TR.TypeRef type, Type targetClrType)
+        public static object? FlatBufferToClr(ByteBuffer byteBuffer, TR.TypeRef type, Type targetClrType)
         {
-            var json = FlatBufferToJson(bytes);
+            var json = FlatBufferToJson(byteBuffer);
             return JsonToClr(json, type, targetClrType);
         }
 
