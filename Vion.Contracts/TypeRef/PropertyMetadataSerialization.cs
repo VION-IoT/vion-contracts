@@ -85,6 +85,17 @@ namespace Vion.Contracts.TypeRef
                 o["statusMappings"] = smObj;
             }
 
+            if (p.EnumLabels is { Count: > 0 } el)
+            {
+                var elObj = new JsonObject();
+                foreach (var kv in el)
+                {
+                    elObj[kv.Key] = kv.Value;
+                }
+
+                o["enumLabels"] = elObj;
+            }
+
             return o;
         }
 
@@ -100,6 +111,7 @@ namespace Vion.Contracts.TypeRef
                        UIHint = o["uiHint"]?.GetValue<string>(),
                        Decimals = o["decimals"]?.GetValue<int>(),
                        StatusMappings = o["statusMappings"] is JsonObject sm ? sm.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
+                       EnumLabels = o["enumLabels"] is JsonObject el ? el.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
                    };
         }
 

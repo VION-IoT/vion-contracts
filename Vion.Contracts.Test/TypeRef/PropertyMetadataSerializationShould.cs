@@ -50,10 +50,31 @@ namespace Vion.Contracts.Test.TypeRef
                                                 UIHint = "slider",
                                                 Decimals = 3,
                                                 StatusMappings = ImmutableDictionary<string, string>.Empty.Add("Ok", "ok").Add("Warning", "warning"),
+                                                EnumLabels = ImmutableDictionary<string, string>.Empty.Add("Ok", "OK").Add("Warning", "Warnung"),
                                             },
                                             new RuntimeMetadata { Persistent = true });
             var roundtripped = PropertyMetadataSerialization.FromJson(meta.ToJson());
             Assert.AreEqual(meta, roundtripped);
+        }
+
+        [TestMethod]
+        public void SerializeEnumLabelsAsObjectMap()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new EnumTypeRef("AlarmState",
+                                                                          new[] { "Ok", "Warning", "Critical" }.ToImmutableArray())),
+                                            new Presentation
+                                            {
+                                                EnumLabels = ImmutableDictionary<string, string>.Empty
+                                                                                                .Add("Ok", "Alles in Ordnung")
+                                                                                                .Add("Warning", "Warnung")
+                                                                                                .Add("Critical", "Kritisch"),
+                                            },
+                                            RuntimeMetadata.None);
+            var json = meta.ToJson();
+            var labels = json["presentation"]!["enumLabels"]!.AsObject();
+            Assert.AreEqual("Alles in Ordnung", labels["Ok"]!.GetValue<string>());
+            Assert.AreEqual("Warnung", labels["Warning"]!.GetValue<string>());
+            Assert.AreEqual("Kritisch", labels["Critical"]!.GetValue<string>());
         }
 
         [TestMethod]
