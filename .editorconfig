@@ -1,4 +1,34 @@
+root = true
 
-[*.{cs,vb}]
-#### Naming styles ####
+# Default rules — apply to everything unless a more specific section overrides.
+[*]
+charset = utf-8
 end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+# C# / VB source files — explicit charset = utf-8 (no BOM), 4-space indent.
+# This is the load-bearing section: PR 1 (rich-types) hit repeated BOM and
+# missing-trailing-newline drift caused by `dotnet add package` (introduces
+# BOM on csproj, strips trailing newlines) and shell tools editing source.
+[*.{cs,vb}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_size = 4
+
+# .NET project files — same hygiene as source, also 4-space indent.
+[*.{csproj,props,targets,sln}]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_size = 4
+
+# Markdown — keep trailing whitespace (two spaces = explicit line break).
+[*.md]
+trim_trailing_whitespace = false
+
+# Generated FlatBuffers C# — output of flatc; don't enforce style on regenerated files.
+[FlatBuffers.Generated/**]
+generated_code = true
