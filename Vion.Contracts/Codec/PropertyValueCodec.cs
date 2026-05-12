@@ -116,7 +116,19 @@ namespace Vion.Contracts.Codec
             return errors.Count == 0 ? ValidationResult.Valid : new ValidationResult(false, errors.ToImmutableArray());
         }
 
-        private static object? JsonToClr(JsonNode? json, TR.TypeRef type, Type targetClrType)
+        /// <summary>
+        ///     Decodes <paramref name="json" /> into a CLR value of <paramref name="targetClrType" />,
+        ///     using the schema <paramref name="type" /> to drive numeric precision narrowing,
+        ///     enum name → value, struct constructor matching, and
+        ///     <see cref="ImmutableArray{T}" /> construction. Returns <c>null</c> when
+        ///     <paramref name="json" /> is <c>null</c> and <paramref name="type" /> is a
+        ///     <see cref="TR.NullableTypeRef" />.
+        ///     This is the JSON-side counterpart of <see cref="FlatBufferToClr" />: it accepts a
+        ///     pre-parsed <see cref="JsonNode" /> instead of a FlatBuffer wire payload, so callers
+        ///     that already have JSON (REST APIs, dev tooling, mocks) don't need to round-trip
+        ///     through the FB encoder first.
+        /// </summary>
+        public static object? JsonToClr(JsonNode? json, TR.TypeRef type, Type targetClrType)
         {
             if (type is TR.NullableTypeRef n)
             {
@@ -131,7 +143,7 @@ namespace Vion.Contracts.Codec
 
             if (json is null)
             {
-                throw new PropertyValueDecodeException($"FlatBufferToClr: null wire value but schema '{type.GetType().Name}' is not nullable.");
+                throw new PropertyValueDecodeException($"JsonToClr: null value but schema '{type.GetType().Name}' is not nullable.");
             }
 
             return type switch
@@ -140,7 +152,7 @@ namespace Vion.Contracts.Codec
                 TR.EnumTypeRef _ => EnumNameCache.Parse(targetClrType, json.GetValue<string>()),
                 TR.StructTypeRef s => JsonToClrStruct(json, s, targetClrType),
                 TR.ArrayTypeRef a => JsonToClrArray(json, a, targetClrType),
-                _ => throw new PropertyValueDecodeException($"FlatBufferToClr: unknown schema type '{type.GetType().Name}'."),
+                _ => throw new PropertyValueDecodeException($"JsonToClr: unknown schema type '{type.GetType().Name}'."),
             };
         }
 
