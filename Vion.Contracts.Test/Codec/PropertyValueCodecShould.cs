@@ -1050,6 +1050,59 @@ namespace Vion.Contracts.Test.Codec
             Assert.Throws<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToFlatBuffer(input, schema));
         }
 
+        // ── JsonToClr direct-entry tests ─────────────────────────────────────
+        // FlatBufferToClr already exercises JsonToClr indirectly. These tests
+        // assert the public direct-entry semantics: skip the FB encode hop when
+        // the caller has JSON in hand (REST APIs, dev tooling, mocks).
+
+        [TestMethod]
+        public void JsonToClrConvertsPrimitiveDirectly()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double);
+            var json = JsonValue.Create(3.14);
+            var result = PropertyValueCodec.JsonToClr(json, schema, typeof(double));
+            Assert.AreEqual(3.14, (double)result!);
+        }
+
+        [TestMethod]
+        public void JsonToClrConvertsNullableNullDirectly()
+        {
+            var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
+            var result = PropertyValueCodec.JsonToClr(null, schema, typeof(double?));
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void JsonToClrConvertsEnumNameDirectly()
+        {
+            var schema = new TR.EnumTypeRef("AlarmState", ImmutableArray.Create("Ok", "Warning", "Critical"));
+            var json = JsonValue.Create("Warning");
+            var result = PropertyValueCodec.JsonToClr(json, schema, typeof(AlarmState));
+            Assert.AreEqual(AlarmState.Warning, result);
+        }
+
+        [TestMethod]
+        public void JsonToClrConvertsStructDirectly()
+        {
+            var schema = new TR.StructTypeRef("Coordinates",
+                                              ImmutableArray.Create(
+                                                  new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                  new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create("lat", "lon"));
+            var json = new JsonObject { ["lat"] = 47.3, ["lon"] = 8.5 };
+            var result = (Coordinates)PropertyValueCodec.JsonToClr(json, schema, typeof(Coordinates))!;
+            Assert.AreEqual(47.3, result.Lat);
+            Assert.AreEqual(8.5, result.Lon);
+        }
+
+        [TestMethod]
+        public void JsonToClrThrowsOnNullValueForNonNullableSchema()
+        {
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double);
+            var ex = Assert.ThrowsExactly<PropertyValueDecodeException>(() => PropertyValueCodec.JsonToClr(null, schema, typeof(double)));
+            StringAssert.Contains(ex.Message, "JsonToClr");
+        }
+
         // ── CLR round-trip tests (ClrToFlatBuffer → FlatBufferToClr) ─────────
 
         [TestMethod]
