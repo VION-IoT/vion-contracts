@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using Vion.Contracts.TypeRef;
@@ -488,6 +489,88 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.IsInstanceOfType<NullableTypeRef>(schema.Type);
             var inner = ((NullableTypeRef)schema.Type).Inner;
             Assert.AreEqual(new PrimitiveTypeRef(PrimitiveKind.Double), inner);
+        }
+
+        // ── writeOnly (§5.3) ────────────────────────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void AcceptWriteOnlyKeywordOnString()
+        {
+            var json = JsonNode.Parse("{\"type\":\"string\",\"writeOnly\":true}")!;
+            var schema = TypeSchemaSerialization.FromJsonSchema(json);
+            Assert.IsTrue(schema.Annotations.WriteOnly);
+        }
+
+        [TestMethod]
+        public void AcceptWriteOnlyKeywordOnNullableString()
+        {
+            var json = JsonNode.Parse("{\"type\":[\"string\",\"null\"],\"writeOnly\":true}")!;
+            var schema = TypeSchemaSerialization.FromJsonSchema(json);
+            Assert.IsTrue(schema.Annotations.WriteOnly);
+        }
+
+        [TestMethod]
+        public void EmitWriteOnlyKeyword()
+        {
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.String), new TypeAnnotations { WriteOnly = true }, ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var json = schema.ToJsonSchema();
+            Assert.IsTrue(json["writeOnly"]?.GetValue<bool>() ?? false);
+        }
+
+        [TestMethod]
+        public void OmitWriteOnlyKeyWhenAnnotationIsFalse()
+        {
+            var schema = TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.String));
+            var json = (JsonObject)schema.ToJsonSchema();
+            Assert.IsFalse(json.ContainsKey("writeOnly"));
+        }
+
+        [TestMethod]
+        public void RejectWriteOnlyOnNonString()
+        {
+            var json = JsonNode.Parse("{\"type\":\"number\",\"format\":\"double\",\"writeOnly\":true}")!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(json));
+        }
+
+        // ── x-kind (§5.5) ───────────────────────────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void AcceptXKindKeyword()
+        {
+            // x-kind is only meaningful on measuring-point schemas, but the codec accepts it
+            // anywhere — the LB-side enforcement (DALE) ensures author correctness.
+            var json = JsonNode.Parse("{\"type\":\"number\",\"format\":\"double\",\"x-kind\":\"totalIncreasing\"}")!;
+            var schema = TypeSchemaSerialization.FromJsonSchema(json);
+            Assert.AreEqual(MeasuringPointKind.TotalIncreasing, schema.Annotations.Kind);
+        }
+
+        [TestMethod]
+        public void EmitXKindKeyword()
+        {
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double),
+                                        new TypeAnnotations { Kind = MeasuringPointKind.TotalIncreasing },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var json = schema.ToJsonSchema();
+            Assert.AreEqual("totalIncreasing", json["x-kind"]?.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundtripAllThreeKindValues()
+        {
+            foreach (var kind in Enum.GetValues<MeasuringPointKind>())
+            {
+                var original = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Double), new TypeAnnotations { Kind = kind }, ImmutableDictionary<string, TypeAnnotations>.Empty);
+                var json = original.ToJsonSchema();
+                var roundtripped = TypeSchemaSerialization.FromJsonSchema(json);
+                Assert.AreEqual(kind, roundtripped.Annotations.Kind);
+            }
+        }
+
+        [TestMethod]
+        public void RejectUnknownXKindValue()
+        {
+            var json = JsonNode.Parse("{\"type\":\"number\",\"format\":\"double\",\"x-kind\":\"bogus\"}")!;
+            Assert.Throws<InvalidSchemaException>(() => TypeSchemaSerialization.FromJsonSchema(json));
         }
     }
 }
