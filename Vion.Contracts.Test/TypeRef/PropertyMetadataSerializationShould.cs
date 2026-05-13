@@ -110,5 +110,44 @@ namespace Vion.Contracts.Test.TypeRef
             // object has no `order` key.
             Assert.IsFalse(json["presentation"]!.AsObject().ContainsKey("order"));
         }
+
+        [TestMethod]
+        public void RoundtripPresentationFormat()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.String)), new Presentation { Format = "LLLL" }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            var roundtripped = PropertyMetadataSerialization.FromJson(json);
+            Assert.AreEqual("LLLL", roundtripped.Presentation.Format);
+        }
+
+        [TestMethod]
+        public void EmitFormatKeyVerbatim()
+        {
+            // The codec round-trips the value as-is — it doesn't validate moment-token syntax.
+            // That responsibility lives at the renderer (dashboard / DevHost).
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.String)),
+                                                new Presentation { Format = "YYYY-MM-DD HH:mm:ss.SSS" },
+                                                RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            Assert.AreEqual("YYYY-MM-DD HH:mm:ss.SSS", json["presentation"]!["format"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void EmitFormatKeyForRelativeSentinel()
+        {
+            // "relative" is a reserved sentinel; the codec doesn't treat it specially —
+            // it round-trips verbatim and the renderer interprets it.
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.String)), new Presentation { Format = "relative" }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            Assert.AreEqual("relative", json["presentation"]!["format"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void OmitFormatKeyWhenNull()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)), new Presentation { Group = "Power" }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            Assert.IsFalse(json["presentation"]!.AsObject().ContainsKey("format"));
+        }
     }
 }

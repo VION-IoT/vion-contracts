@@ -27,6 +27,18 @@ namespace Vion.Contracts.TypeRef
 
         public int? Decimals { get; init; }
 
+        /// <summary>
+        ///     Renderer-facing format-token string for date / duration / numeric formatting.
+        ///     Type-orthogonal — orthogonal to <see cref="UIHint" /> (which carries the
+        ///     widget-routing key, e.g. <c>"trigger"</c>, <c>"sparkline"</c>). When set, the
+        ///     dashboard's date library (moment.js / day.js / Luxon) consumes it directly for
+        ///     <see cref="System.DateTime" /> or <see cref="System.TimeSpan" /> properties.
+        ///     Two reserved sentinel values short-circuit the token interpreter:
+        ///     <c>"relative"</c> for auto-updating <c>"3 minutes ago"</c>-style date display,
+        ///     and <c>"humanize"</c> for a humanized duration like <c>"3 hours"</c>.
+        /// </summary>
+        public string? Format { get; init; }
+
         public ImmutableDictionary<string, string>? StatusMappings { get; init; }
 
         /// <summary>
@@ -41,9 +53,8 @@ namespace Vion.Contracts.TypeRef
         public bool IsEmpty
         {
             get =>
-                DisplayName is null && Group is null && Order is null && Category is null && Importance is null && UIHint is null && Decimals is null &&
-                (StatusMappings is null || StatusMappings.IsEmpty) &&
-                (EnumLabels is null || EnumLabels.IsEmpty);
+                DisplayName is null && Group is null && Order is null && Category is null && Importance is null && UIHint is null && Decimals is null && Format is null &&
+                (StatusMappings is null || StatusMappings.IsEmpty) && (EnumLabels is null || EnumLabels.IsEmpty);
         }
 
         /// <inheritdoc />
@@ -94,6 +105,11 @@ namespace Vion.Contracts.TypeRef
                 return false;
             }
 
+            if (Format != other.Format)
+            {
+                return false;
+            }
+
             if (!DictionariesEqual(StatusMappings, other.StatusMappings))
             {
                 return false;
@@ -118,6 +134,7 @@ namespace Vion.Contracts.TypeRef
             hash.Add(Importance);
             hash.Add(UIHint);
             hash.Add(Decimals);
+            hash.Add(Format);
             AddDictionary(ref hash, StatusMappings);
             AddDictionary(ref hash, EnumLabels);
             return hash.ToHashCode();

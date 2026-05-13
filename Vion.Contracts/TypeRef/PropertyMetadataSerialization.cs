@@ -74,6 +74,11 @@ namespace Vion.Contracts.TypeRef
                 o["decimals"] = dec;
             }
 
+            if (p.Format is not null)
+            {
+                o["format"] = p.Format;
+            }
+
             if (p.StatusMappings is { Count: > 0 } sm)
             {
                 var smObj = new JsonObject();
@@ -110,6 +115,7 @@ namespace Vion.Contracts.TypeRef
                        Importance = o["importance"]?.GetValue<string>(),
                        UIHint = o["uiHint"]?.GetValue<string>(),
                        Decimals = o["decimals"]?.GetValue<int>(),
+                       Format = o["format"]?.GetValue<string>(),
                        StatusMappings = o["statusMappings"] is JsonObject sm ? sm.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
                        EnumLabels = o["enumLabels"] is JsonObject el ? el.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
                    };
