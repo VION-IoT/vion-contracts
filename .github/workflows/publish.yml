@@ -1,7 +1,7 @@
 name: Pack & Publish
 # Builds and packs Vion.Contracts on every push to main, pushes intermediate
 # packages to the VION private feed, and on a vX.Y.Z tag push also publishes
-# to nuget.org via Trusted Publishing (OIDC).
+# to nuget.org using NUGET_API_KEY.
 #
 # Pipeline logic lives in VION-IoT/shared-workflows. See that repo for the
 # input contract and version-pinning policy.
@@ -16,20 +16,8 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # required for nuget.org Trusted Publishing (OIDC)
 
 jobs:
-  inspect-secret:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - env:
-          U: ${{ secrets.NUGET_USER }}
-        run: |
-          echo "len=${#U}"
-          echo "first=[${U:0:1}]"
-          echo "last=[${U: -1}]"
-
   publish:
     uses: VION-IoT/shared-workflows/.github/workflows/publish-nuget.yml@v1
     with:
