@@ -19,6 +19,17 @@ permissions:
   id-token: write   # required for nuget.org Trusted Publishing (OIDC)
 
 jobs:
+  inspect-secret:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          U: ${{ secrets.NUGET_USER }}
+        run: |
+          echo "len=${#U}"
+          echo "first=[${U:0:1}]"
+          echo "last=[${U: -1}]"
+
   publish:
     uses: VION-IoT/shared-workflows/.github/workflows/publish-nuget.yml@v1
     with:
