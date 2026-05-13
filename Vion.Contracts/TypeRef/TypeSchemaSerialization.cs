@@ -18,7 +18,8 @@ namespace Vion.Contracts.TypeRef
                                                                   {
                                                                       "type", "format", "title", "description",
                                                                       "minimum", "maximum",
-                                                                      "x-unit", "readOnly",
+                                                                      "x-unit", "x-kind",
+                                                                      "readOnly", "writeOnly",
                                                                       "enum",
                                                                       "properties", "required", "additionalProperties",
                                                                       "items",
@@ -214,6 +215,39 @@ namespace Vion.Contracts.TypeRef
             {
                 obj["readOnly"] = true;
             }
+
+            if (ann.WriteOnly)
+            {
+                obj["writeOnly"] = true;
+            }
+
+            if (ann.Kind is { } kind)
+            {
+                obj["x-kind"] = KindToWire(kind);
+            }
+        }
+
+        private static string KindToWire(MeasuringPointKind kind)
+        {
+            return kind switch
+            {
+                MeasuringPointKind.Measurement => "measurement",
+                MeasuringPointKind.Total => "total",
+                MeasuringPointKind.TotalIncreasing => "totalIncreasing",
+                _ => throw new InvalidOperationException($"Unknown MeasuringPointKind: {kind}"),
+            };
+        }
+
+        private static MeasuringPointKind? KindFromWire(string? wire)
+        {
+            return wire switch
+            {
+                null => null,
+                "measurement" => MeasuringPointKind.Measurement,
+                "total" => MeasuringPointKind.Total,
+                "totalIncreasing" => MeasuringPointKind.TotalIncreasing,
+                _ => throw new InvalidSchemaException($"Unknown x-kind value: '{wire}'"),
+            };
         }
 
         private static (TypeRef, TypeAnnotations, ImmutableDictionary<string, TypeAnnotations>) ParseNode(JsonNode node)
@@ -250,6 +284,13 @@ namespace Vion.Contracts.TypeRef
             if (typeRef is EnumTypeRef or StructTypeRef)
             {
                 annotations = annotations with { Title = null };
+            }
+
+            // writeOnly only applies to string (or string?) in v1 — nullable wrapping happens after
+            // this check, so the bare typeRef is the unwrapped element type.
+            if (annotations.WriteOnly && typeRef is not PrimitiveTypeRef { Kind: PrimitiveKind.String })
+            {
+                throw new InvalidSchemaException("writeOnly is only supported on string or string? schemas in v1");
             }
 
             return (isNullable ? new NullableTypeRef(typeRef) : typeRef, annotations, sfa);
@@ -291,6 +332,8 @@ namespace Vion.Contracts.TypeRef
                        Minimum = obj["minimum"]?.GetValue<double>(),
                        Maximum = obj["maximum"]?.GetValue<double>(),
                        ReadOnly = obj["readOnly"]?.GetValue<bool>() ?? false,
+                       WriteOnly = obj["writeOnly"]?.GetValue<bool>() ?? false,
+                       Kind = KindFromWire(obj["x-kind"]?.GetValue<string>()),
                    };
         }
 

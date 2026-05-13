@@ -21,9 +21,13 @@ namespace Vion.Contracts.TypeRef
 
         public bool ReadOnly { get; init; }
 
+        public bool WriteOnly { get; init; }
+
+        public MeasuringPointKind? Kind { get; init; }
+
         public bool IsEmpty
         {
-            get => Title is null && Description is null && Unit is null && Minimum is null && Maximum is null && !ReadOnly;
+            get => Title is null && Description is null && Unit is null && Minimum is null && Maximum is null && !ReadOnly && !WriteOnly && Kind is null;
         }
     }
 }

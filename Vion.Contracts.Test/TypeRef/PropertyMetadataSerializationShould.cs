@@ -60,8 +60,7 @@ namespace Vion.Contracts.Test.TypeRef
         [TestMethod]
         public void SerializeEnumLabelsAsObjectMap()
         {
-            var meta = new PropertyMetadata(TypeSchema.Of(new EnumTypeRef("AlarmState",
-                                                                          new[] { "Ok", "Warning", "Critical" }.ToImmutableArray())),
+            var meta = new PropertyMetadata(TypeSchema.Of(new EnumTypeRef("AlarmState", new[] { "Ok", "Warning", "Critical" }.ToImmutableArray())),
                                             new Presentation
                                             {
                                                 EnumLabels = ImmutableDictionary<string, string>.Empty
@@ -90,6 +89,26 @@ namespace Vion.Contracts.Test.TypeRef
         {
             var json = JsonNode.Parse("{\"presentation\":null,\"runtime\":null}")!;
             Assert.Throws<InvalidSchemaException>(() => PropertyMetadataSerialization.FromJson(json));
+        }
+
+        [TestMethod]
+        public void RoundtripPresentationOrder()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)), new Presentation { Order = -1 }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            var roundtripped = PropertyMetadataSerialization.FromJson(json);
+            Assert.AreEqual(-1, roundtripped.Presentation.Order);
+        }
+
+        [TestMethod]
+        public void OmitOrderKeyWhenNull()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)), new Presentation { Group = "Power" }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+
+            // Presentation is non-empty (Group is set), so it serialises as an object — assert that
+            // object has no `order` key.
+            Assert.IsFalse(json["presentation"]!.AsObject().ContainsKey("order"));
         }
     }
 }
