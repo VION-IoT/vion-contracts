@@ -16,7 +16,8 @@ namespace Vion.Contracts.Introspection
 
         /// <summary>
         ///     The function interfaces implemented/contained in the logic block.
-        ///     Interfaces that are dependencies carry additional annotations (Cardinality, Sharing, CreationType).
+        ///     A binding may carry a consumer-side link-multiplicity annotation
+        ///     (see <see cref="InterfaceInfo.Annotations" />).
         /// </summary>
         public List<InterfaceInfo> Interfaces { get; set; } = [];
 
@@ -55,7 +56,10 @@ namespace Vion.Contracts.Introspection
 
             /// <summary>
             ///     UI annotations. Common keys: DefaultName, Tags, ContractName, ArrowDirection, RoleDefaultName,
-            ///     MatchingRoleDefaultName. Dependency interfaces additionally carry: Cardinality, Sharing, CreationType.
+            ///     MatchingRoleDefaultName. A non-default consumer-side link multiplicity additionally adds the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.MultiplicityAnnotationKey" />
+            ///     key, valued with one of the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings.
             /// </summary>
             public Dictionary<string, object> Annotations { get; set; } = [];
         }
@@ -79,7 +83,12 @@ namespace Vion.Contracts.Introspection
             public string MatchingContractType { get; set; } = null!;
 
             /// <summary>
-            ///     UI information like MinMappings, MaxMappings, Shareable, CanCreateNew, DefaultName
+            ///     UI annotations. Common key: DefaultName. A non-default consumer-side link multiplicity adds the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.MultiplicityAnnotationKey" />
+            ///     key; a provider-side consumer cap adds the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.ConsumersAnnotationKey" />
+            ///     key — each valued with one of the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings.
             /// </summary>
             public Dictionary<string, object> Annotations { get; set; } = [];
         }
