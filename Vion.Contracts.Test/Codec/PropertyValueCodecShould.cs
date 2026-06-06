@@ -1085,9 +1085,8 @@ namespace Vion.Contracts.Test.Codec
         public void JsonToClrConvertsStructDirectly()
         {
             var schema = new TR.StructTypeRef("Coordinates",
-                                              ImmutableArray.Create(
-                                                  new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
-                                                  new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
+                                              ImmutableArray.Create(new TR.StructField("lat", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double)),
+                                                                    new TR.StructField("lon", new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double))),
                                               ImmutableArray.Create("lat", "lon"));
             var json = new JsonObject { ["lat"] = 47.3, ["lon"] = 8.5 };
             var result = (Coordinates)PropertyValueCodec.JsonToClr(json, schema, typeof(Coordinates))!;
