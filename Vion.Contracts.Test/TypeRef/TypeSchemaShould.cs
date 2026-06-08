@@ -56,5 +56,19 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.AreEqual(s1, s2);
             Assert.AreEqual(s1.GetHashCode(), s2.GetHashCode());
         }
+
+        [TestMethod]
+        public void BuildAnAnnotatedSchemaViaTheOfOverloadWithEmptyStructFieldAnnotations()
+        {
+            var type = new PrimitiveTypeRef(PrimitiveKind.Double);
+            var annotations = new TypeAnnotations { Unit = "kW", Minimum = 0 };
+
+            var schema = TypeSchema.Of(type, annotations);
+
+            Assert.AreEqual(type, schema.Type);
+            Assert.AreEqual(annotations, schema.Annotations);
+            Assert.IsTrue(schema.StructFieldAnnotations.IsEmpty);
+            Assert.AreEqual(new TypeSchema(type, annotations, ImmutableDictionary<string, TypeAnnotations>.Empty), schema);
+        }
     }
 }

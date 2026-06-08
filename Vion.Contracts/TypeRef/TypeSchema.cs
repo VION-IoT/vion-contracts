@@ -46,6 +46,16 @@ namespace Vion.Contracts.TypeRef
             return new TypeSchema(type, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
         }
 
+        /// <summary>
+        ///     Convenience factory: creates a <see cref="TypeSchema" /> with the given annotations and no
+        ///     struct-field annotations — the common case for a primitive property or measuring point that
+        ///     carries a unit, bounds, or a read/write-only flag.
+        /// </summary>
+        public static TypeSchema Of(TypeRef type, TypeAnnotations annotations)
+        {
+            return new TypeSchema(type, annotations, ImmutableDictionary<string, TypeAnnotations>.Empty);
+        }
+
         /// <inheritdoc />
         public override int GetHashCode()
         {
