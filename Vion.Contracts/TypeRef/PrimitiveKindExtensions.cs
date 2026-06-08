@@ -10,7 +10,10 @@ namespace Vion.Contracts.TypeRef
         ///     so consumers receive values without narrowing conversions at decode time.
         /// </summary>
         /// <param name="kind">The primitive kind.</param>
-        /// <param name="isNullable">When <c>true</c>, returns the nullable variant for value types. <see cref="string" /> is unaffected.</param>
+        /// <param name="isNullable">
+        ///     When <c>true</c>, returns the nullable variant for value types. <see cref="string" /> is
+        ///     unaffected.
+        /// </param>
         public static Type ClrType(this PrimitiveKind kind, bool isNullable = false)
         {
             return kind switch

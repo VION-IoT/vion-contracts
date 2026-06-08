@@ -130,7 +130,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnNullableBoolForBoolKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.Bool.ClrType(isNullable: true);
+            var type = PrimitiveKind.Bool.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(bool?), type);
@@ -140,7 +140,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnNullableLongForIntKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.Int.ClrType(isNullable: true);
+            var type = PrimitiveKind.Int.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(long?), type);
@@ -150,7 +150,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnNullableDoubleForFloatKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.Float.ClrType(isNullable: true);
+            var type = PrimitiveKind.Float.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(double?), type);
@@ -160,7 +160,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnStringForStringKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.String.ClrType(isNullable: true);
+            var type = PrimitiveKind.String.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(string), type);
@@ -170,7 +170,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnNullableDateTimeForDateTimeKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.DateTime.ClrType(isNullable: true);
+            var type = PrimitiveKind.DateTime.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(DateTime?), type);
@@ -180,7 +180,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void ReturnNullableTimeSpanForDurationKindWhenIsNullable()
         {
             // Act
-            var type = PrimitiveKind.Duration.ClrType(isNullable: true);
+            var type = PrimitiveKind.Duration.ClrType(true);
 
             // Assert
             Assert.AreEqual(typeof(TimeSpan?), type);
