@@ -135,8 +135,9 @@ namespace Vion.Contracts.Introspection
 
             /// <summary>
             ///     JSON Schema 2020-12 document (Dale profile) describing the property's data shape.
+            ///     Required: every introspected property carries a schema.
             /// </summary>
-            public JsonNode Schema { get; set; } = null!;
+            public required JsonNode Schema { get; set; }
 
             /// <summary>
             ///     Optional UI presentation hints (display name, group, ordering, etc.). May be omitted (null)
@@ -160,8 +161,9 @@ namespace Vion.Contracts.Introspection
 
             /// <summary>
             ///     JSON Schema 2020-12 document (Dale profile) describing the measuring point's data shape.
+            ///     Required: every introspected measuring point carries a schema.
             /// </summary>
-            public JsonNode Schema { get; set; } = null!;
+            public required JsonNode Schema { get; set; }
 
             /// <summary>
             ///     Optional UI presentation hints. May be omitted (null).
