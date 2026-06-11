@@ -280,6 +280,51 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
+        public void ApplyPerStructFieldAnnotationsToNullableStructSubschemas()
+        {
+            // Nullable wrapping must not strip per-field [StructField] annotations: the field
+            // subschemas must be identical to the non-nullable form — only the root "type"
+            // widens to ["object","null"].
+            var s = new StructTypeRef("Coordinates",
+                                      ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("lat", "lon"));
+            var sfa = ImmutableDictionary<string, TypeAnnotations>.Empty
+                                                                  .Add("lat",
+                                                                       new TypeAnnotations
+                                                                       { Description = "Latitude in WGS-84 decimal degrees.", Unit = "deg", Minimum = -90, Maximum = 90 })
+                                                                  .Add("lon",
+                                                                       new TypeAnnotations
+                                                                       { Description = "Longitude in WGS-84 decimal degrees.", Unit = "deg", Minimum = -180, Maximum = 180 });
+
+            var nullable = new TypeSchema(new NullableTypeRef(s), TypeAnnotations.None, sfa).ToJsonSchema();
+            var nonNullable = new TypeSchema(s, TypeAnnotations.None, sfa).ToJsonSchema();
+
+            var actual = nullable.ToJsonString();
+            StringAssert.Contains(actual, "\"type\":[\"object\",\"null\"]");
+            StringAssert.Contains(actual,
+                                  "\"lat\":{\"type\":\"number\",\"format\":\"double\",\"description\":\"Latitude in WGS-84 decimal degrees.\",\"minimum\":-90,\"maximum\":90,\"x-unit\":\"deg\"}");
+            StringAssert.Contains(actual,
+                                  "\"lon\":{\"type\":\"number\",\"format\":\"double\",\"description\":\"Longitude in WGS-84 decimal degrees.\",\"minimum\":-180,\"maximum\":180,\"x-unit\":\"deg\"}");
+
+            // Field subschemas are bit-identical between the nullable and non-nullable forms.
+            Assert.AreEqual(nonNullable["properties"]!.ToJsonString(), nullable["properties"]!.ToJsonString());
+        }
+
+        [TestMethod]
+        public void ApplyPerStructFieldAnnotationsToArrayOfNullableStructSubschemas()
+        {
+            // Same guarantee one level deeper: ImmutableArray<Coordinates?> routes SFA through
+            // BuildArray AND BuildNullable before reaching the struct fields.
+            var s = new StructTypeRef("Coordinates", ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double))), ImmutableArray.Create("lat"));
+            var sfa = ImmutableDictionary<string, TypeAnnotations>.Empty.Add("lat", new TypeAnnotations { Unit = "deg", Minimum = -90, Maximum = 90 });
+            var schema = new TypeSchema(new ArrayTypeRef(new NullableTypeRef(s)), TypeAnnotations.None, sfa);
+            var actual = schema.ToJsonSchema().ToJsonString();
+
+            StringAssert.Contains(actual, "\"lat\":{\"type\":\"number\",\"format\":\"double\",\"minimum\":-90,\"maximum\":90,\"x-unit\":\"deg\"}");
+        }
+
+        [TestMethod]
         public void ApplyPropertyAnnotationsOnlyToArrayRootNotItems()
         {
             // Property-level annotations (title, x-unit, readOnly) describe the property as a whole
@@ -410,6 +455,25 @@ namespace Vion.Contracts.Test.TypeRef
             var original = TypeSchema.Of(new NullableTypeRef(struc));
             var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
             Assert.AreEqual(original.Type, parsed.Type);
+        }
+
+        [TestMethod]
+        public void RoundtripNullableStructWithPerFieldAnnotationsPreservesAllAnnotations()
+        {
+            var s = new StructTypeRef("Coordinates",
+                                      ImmutableArray.Create(new StructField("lat", new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                            new StructField("lon", new PrimitiveTypeRef(PrimitiveKind.Double))),
+                                      ImmutableArray.Create("lat", "lon"));
+            var sfa = ImmutableDictionary<string, TypeAnnotations>.Empty
+                                                                  .Add("lat",
+                                                                       new TypeAnnotations
+                                                                       { Description = "Latitude in WGS-84 decimal degrees.", Unit = "deg", Minimum = -90, Maximum = 90 })
+                                                                  .Add("lon",
+                                                                       new TypeAnnotations
+                                                                       { Description = "Longitude in WGS-84 decimal degrees.", Unit = "deg", Minimum = -180, Maximum = 180 });
+            var original = new TypeSchema(new NullableTypeRef(s), TypeAnnotations.None, sfa);
+            var parsed = TypeSchemaSerialization.FromJsonSchema(original.ToJsonSchema());
+            Assert.AreEqual(original, parsed); // full equality — Type AND StructFieldAnnotations survive
         }
 
         [TestMethod]

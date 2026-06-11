@@ -54,8 +54,9 @@ namespace Vion.Contracts.TypeRef
             // - BuildArray recurses with (ann, sfa) passed through. The inner BuildSchema applies
             //   annotations to `items`, and this outer call applies them again to the array node.
             //   That double-apply is intentional per spec §5.1 (x-unit lives on both array and items).
-            // - BuildNullable recurses with empty (ann, sfa) so annotations are applied exactly once,
-            //   here, on the mutated inner JsonObject — see comment in BuildNullable for rationale.
+            // - BuildNullable recurses with empty ann (so annotations are applied exactly once,
+            //   here, on the mutated inner JsonObject) but passes sfa through so per-field
+            //   [StructField] data reaches the inner struct — see comment in BuildNullable.
             ApplyAnnotations(node, annotations);
             return node;
         }
@@ -142,15 +143,16 @@ namespace Vion.Contracts.TypeRef
 
         private static JsonObject BuildNullable(NullableTypeRef n, TypeAnnotations ann, ImmutableDictionary<string, TypeAnnotations> sfa)
         {
-            // Pass empty annotations / SFA into the recursive BuildSchema. Annotations belong to the
-            // OUTER property-level call site, not the inner unwrapped type — the outer BuildSchema's
-            // ApplyAnnotations runs exactly once on this same JsonObject after we return. If we passed
-            // (ann, sfa) here, ApplyAnnotations would fire twice on the same object (the inner
-            // BuildSchema would apply them, and the outer one would apply them again). Currently a
-            // no-op since §2.13 hasn't landed; setting up the right shape now avoids latent bugs.
-            // Note: BuildArray passes only sfa (NOT ann) through — property-level annotations
-            // belong on the array root only; the items subschema carries element-shape concerns.
-            var inner = BuildSchema(n.Inner, TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
+            // Pass empty property-level annotations into the recursive BuildSchema. They belong to
+            // the OUTER call site, not the inner unwrapped type — the outer BuildSchema's
+            // ApplyAnnotations runs exactly once on this same JsonObject after we return. If we
+            // passed ann here, ApplyAnnotations would fire twice on the same object (the inner
+            // BuildSchema would apply them, and the outer one would apply them again).
+            // StructFieldAnnotations DO pass through, same as BuildArray: they are consumed only by
+            // BuildStruct on the FIELD subschemas (never by ApplyAnnotations on this node), so
+            // withholding them would strip per-field [StructField] data from nullable structs while
+            // the non-nullable path keeps it.
+            var inner = BuildSchema(n.Inner, TypeAnnotations.None, sfa);
             if (inner is not JsonObject obj)
             {
                 throw new InvalidOperationException($"Unexpected schema node: {inner.GetType()}");
