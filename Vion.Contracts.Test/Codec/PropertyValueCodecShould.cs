@@ -37,6 +37,21 @@ namespace Vion.Contracts.Test.Codec
         }
 
         [TestMethod]
+        public void EncodeDecodeGuidViaCanonicalString()
+        {
+            var g = Guid.Parse("11112222-3333-4444-5555-666677778888");
+            var type = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Guid);
+
+            var fb = PropertyValueCodec.ClrToFlatBuffer(g, type);
+            var back = (Guid)PropertyValueCodec.FlatBufferToClr(new ByteBuffer(fb), type, typeof(Guid))!;
+            Assert.AreEqual(g, back);
+
+            var schema = new TR.TypeSchema(type, TR.TypeAnnotations.None, ImmutableDictionary<string, TR.TypeAnnotations>.Empty);
+            Assert.IsTrue(PropertyValueCodec.ValidateJson(JsonValue.Create(g.ToString("D")), schema).IsValid);
+            Assert.IsFalse(PropertyValueCodec.ValidateJson(JsonValue.Create("not-a-guid"), schema).IsValid);
+        }
+
+        [TestMethod]
         public void DecodeBoolValFalseAsJsonBool()
         {
             var bytes = BuildBoolVal(false);

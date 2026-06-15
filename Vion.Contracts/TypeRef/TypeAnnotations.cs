@@ -25,9 +25,17 @@ namespace Vion.Contracts.TypeRef
 
         public MeasuringPointKind? Kind { get; init; }
 
+        /// <summary>
+        ///     JSON Schema <c>format</c> for a string value whose shape is author-declared (e.g.
+        ///     <c>"ipv4"</c>). Advisory — consumers may render/soft-validate, the codec never rejects.
+        ///     NOT set for type-derived formats (<c>date-time</c>/<c>duration</c>/<c>uuid</c>); those
+        ///     are <see cref="PrimitiveKind" /> values, not annotations.
+        /// </summary>
+        public string? Format { get; init; }
+
         public bool IsEmpty
         {
-            get => Title is null && Description is null && Unit is null && Minimum is null && Maximum is null && !ReadOnly && !WriteOnly && Kind is null;
+            get => Title is null && Description is null && Unit is null && Minimum is null && Maximum is null && !ReadOnly && !WriteOnly && Kind is null && Format is null;
         }
     }
 }

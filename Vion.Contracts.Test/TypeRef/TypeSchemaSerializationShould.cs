@@ -21,6 +21,7 @@ namespace Vion.Contracts.Test.TypeRef
         [DataRow(PrimitiveKind.Double, "{\"type\":\"number\",\"format\":\"double\"}")]
         [DataRow(PrimitiveKind.DateTime, "{\"type\":\"string\",\"format\":\"date-time\"}")]
         [DataRow(PrimitiveKind.Duration, "{\"type\":\"string\",\"format\":\"duration\"}")]
+        [DataRow(PrimitiveKind.Guid, "{\"type\":\"string\",\"format\":\"uuid\"}")]
         public void EmitJsonSchemaForPrimitiveKind(PrimitiveKind kind, string expected)
         {
             var schema = TypeSchema.Of(new PrimitiveTypeRef(kind));
@@ -29,6 +30,59 @@ namespace Vion.Contracts.Test.TypeRef
             // Compare via canonical-JSON string form (JsonNode.Equals is reference-based).
             var expectedCanonical = JsonNode.Parse(expected)!.ToJsonString();
             Assert.AreEqual(expectedCanonical, actual.ToJsonString());
+        }
+
+        [TestMethod]
+        public void EmitFormatKeywordForStringWithFormatAnnotation()
+        {
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.String),
+                                        new TypeAnnotations { Format = "ipv4" },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+
+            var node = schema.ToJsonSchema();
+
+            Assert.AreEqual("string", node["type"]!.GetValue<string>());
+            Assert.AreEqual("ipv4", node["format"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void NotClobberTypeDerivedFormatWithAnnotation()
+        {
+            // A type-derived format must win; the annotation guard must not overwrite it.
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.DateTime),
+                                        new TypeAnnotations { Format = "ipv4" },
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+
+            Assert.AreEqual("date-time", schema.ToJsonSchema()["format"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundTripStringWithUnknownFormatAsAnnotation()
+        {
+            var json = new JsonObject { ["type"] = "string", ["format"] = "ipv4" };
+
+            var schema = TypeSchemaSerialization.FromJsonSchema(json);
+
+            Assert.IsInstanceOfType(schema.Type, typeof(PrimitiveTypeRef));
+            Assert.AreEqual(PrimitiveKind.String, ((PrimitiveTypeRef)schema.Type).Kind);
+            Assert.AreEqual("ipv4", schema.Annotations.Format);
+            Assert.AreEqual("ipv4", schema.ToJsonSchema()["format"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void RoundTripGuidAsUuidTypeKind()
+        {
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Guid),
+                                        TypeAnnotations.None,
+                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+
+            var node = schema.ToJsonSchema();
+            Assert.AreEqual("string", node["type"]!.GetValue<string>());
+            Assert.AreEqual("uuid", node["format"]!.GetValue<string>());
+
+            var back = TypeSchemaSerialization.FromJsonSchema(node);
+            Assert.AreEqual(PrimitiveKind.Guid, ((PrimitiveTypeRef)back.Type).Kind);
+            Assert.IsNull(back.Annotations.Format); // uuid is a kind, not an annotation
         }
 
         [TestMethod]

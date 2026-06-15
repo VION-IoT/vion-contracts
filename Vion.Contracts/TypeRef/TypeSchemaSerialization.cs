@@ -77,6 +77,7 @@ namespace Vion.Contracts.TypeRef
                 PrimitiveKind.Double => new JsonObject { ["type"] = "number", ["format"] = "double" },
                 PrimitiveKind.DateTime => new JsonObject { ["type"] = "string", ["format"] = "date-time" },
                 PrimitiveKind.Duration => new JsonObject { ["type"] = "string", ["format"] = "duration" },
+                PrimitiveKind.Guid => new JsonObject { ["type"] = "string", ["format"] = "uuid" },
                 _ => throw new InvalidOperationException($"Unknown PrimitiveKind: {p.Kind}"),
             };
         }
@@ -193,6 +194,13 @@ namespace Vion.Contracts.TypeRef
                 obj["title"] = ann.Title;
             }
 
+            // String format is author-declared and advisory. Guard like title: never overwrite a
+            // type-derived format (date-time/duration/uuid set by BuildPrimitive).
+            if (ann.Format is not null && obj["format"] is null)
+            {
+                obj["format"] = ann.Format;
+            }
+
             if (ann.Description is not null)
             {
                 obj["description"] = ann.Description;
@@ -288,6 +296,14 @@ namespace Vion.Contracts.TypeRef
                 annotations = annotations with { Title = null };
             }
 
+            // `format` is an advisory annotation ONLY on a plain string. For every other type the
+            // `format` keyword is the type discriminator (uint8/int32/double/date-time/duration/uuid/…),
+            // already captured in the TypeRef — strip it so it doesn't leak into annotations.
+            if (typeRef is not PrimitiveTypeRef { Kind: PrimitiveKind.String })
+            {
+                annotations = annotations with { Format = null };
+            }
+
             // writeOnly only applies to string (or string?) in v1 — nullable wrapping happens after
             // this check, so the bare typeRef is the unwrapped element type.
             if (annotations.WriteOnly && typeRef is not PrimitiveTypeRef { Kind: PrimitiveKind.String })
@@ -336,6 +352,9 @@ namespace Vion.Contracts.TypeRef
                        ReadOnly = obj["readOnly"]?.GetValue<bool>() ?? false,
                        WriteOnly = obj["writeOnly"]?.GetValue<bool>() ?? false,
                        Kind = KindFromWire(obj["x-kind"]?.GetValue<string>()),
+                       // Read verbatim; ParseNode keeps `format` only for a plain string (advisory string
+                       // format) and strips it for every type-derived format (numeric/temporal/uuid).
+                       Format = obj["format"]?.GetValue<string>(),
                    };
         }
 
@@ -393,8 +412,11 @@ namespace Vion.Contracts.TypeRef
             {
                 "date-time" => (new PrimitiveTypeRef(PrimitiveKind.DateTime), ImmutableDictionary<string, TypeAnnotations>.Empty),
                 "duration" => (new PrimitiveTypeRef(PrimitiveKind.Duration), ImmutableDictionary<string, TypeAnnotations>.Empty),
+                "uuid" => (new PrimitiveTypeRef(PrimitiveKind.Guid), ImmutableDictionary<string, TypeAnnotations>.Empty),
                 null => (new PrimitiveTypeRef(PrimitiveKind.String), ImmutableDictionary<string, TypeAnnotations>.Empty),
-                var f => throw new InvalidSchemaException($"Unsupported string format: '{f}'"),
+                // Any other format is an advisory string-format annotation (open vocabulary). It is
+                // captured into TypeAnnotations.Format by ParseAnnotations — return a plain String here.
+                _ => (new PrimitiveTypeRef(PrimitiveKind.String), ImmutableDictionary<string, TypeAnnotations>.Empty),
             };
         }
 
