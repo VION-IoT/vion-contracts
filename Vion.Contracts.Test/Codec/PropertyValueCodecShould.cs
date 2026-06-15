@@ -36,6 +36,23 @@ namespace Vion.Contracts.Test.Codec
         }
 
         [TestMethod]
+        public void GuidRoundTripsViaCanonicalStringAndValidates()
+        {
+            var g = System.Guid.Parse("11112222-3333-4444-5555-666677778888");
+            var schema = new TR.PrimitiveTypeRef(TR.PrimitiveKind.Guid);
+
+            var json = PropertyValueCodec.ClrToJson(g, schema);
+            Assert.AreEqual("11112222-3333-4444-5555-666677778888", json!.GetValue<string>());
+
+            var back = (System.Guid)PropertyValueCodec.JsonToClr(json, schema, typeof(System.Guid))!;
+            Assert.AreEqual(g, back);
+
+            var ts = new TR.TypeSchema(schema, TR.TypeAnnotations.None, ImmutableDictionary<string, TR.TypeAnnotations>.Empty);
+            Assert.IsTrue(PropertyValueCodec.ValidateJson(JsonValue.Create(g.ToString("D")), ts).IsValid);
+            Assert.IsFalse(PropertyValueCodec.ValidateJson(JsonValue.Create("not-a-guid"), ts).IsValid);
+        }
+
+        [TestMethod]
         public void JsonToClrConvertsNullableNullDirectly()
         {
             var schema = new TR.NullableTypeRef(new TR.PrimitiveTypeRef(TR.PrimitiveKind.Double));
