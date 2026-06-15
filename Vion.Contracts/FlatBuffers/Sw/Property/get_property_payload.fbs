@@ -1,8 +1,0 @@
-namespace Vion.Contracts.FlatBuffers.Sw.Property;
-
-// Payload for requesting the value of a property from a service.
-// All data is provided in the topic and user properties
-table GetPropertyPayload {
-}
-
-root_type GetPropertyPayload;
