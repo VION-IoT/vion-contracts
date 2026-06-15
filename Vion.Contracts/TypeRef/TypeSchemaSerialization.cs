@@ -352,6 +352,7 @@ namespace Vion.Contracts.TypeRef
                        ReadOnly = obj["readOnly"]?.GetValue<bool>() ?? false,
                        WriteOnly = obj["writeOnly"]?.GetValue<bool>() ?? false,
                        Kind = KindFromWire(obj["x-kind"]?.GetValue<string>()),
+
                        // Read verbatim; ParseNode keeps `format` only for a plain string (advisory string
                        // format) and strips it for every type-derived format (numeric/temporal/uuid).
                        Format = obj["format"]?.GetValue<string>(),
@@ -414,6 +415,7 @@ namespace Vion.Contracts.TypeRef
                 "duration" => (new PrimitiveTypeRef(PrimitiveKind.Duration), ImmutableDictionary<string, TypeAnnotations>.Empty),
                 "uuid" => (new PrimitiveTypeRef(PrimitiveKind.Guid), ImmutableDictionary<string, TypeAnnotations>.Empty),
                 null => (new PrimitiveTypeRef(PrimitiveKind.String), ImmutableDictionary<string, TypeAnnotations>.Empty),
+
                 // Any other format is an advisory string-format annotation (open vocabulary). It is
                 // captured into TypeAnnotations.Format by ParseAnnotations — return a plain String here.
                 _ => (new PrimitiveTypeRef(PrimitiveKind.String), ImmutableDictionary<string, TypeAnnotations>.Empty),

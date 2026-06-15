@@ -35,9 +35,7 @@ namespace Vion.Contracts.Test.TypeRef
         [TestMethod]
         public void EmitFormatKeywordForStringWithFormatAnnotation()
         {
-            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.String),
-                                        new TypeAnnotations { Format = "ipv4" },
-                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.String), new TypeAnnotations { Format = "ipv4" }, ImmutableDictionary<string, TypeAnnotations>.Empty);
 
             var node = schema.ToJsonSchema();
 
@@ -49,9 +47,7 @@ namespace Vion.Contracts.Test.TypeRef
         public void NotClobberTypeDerivedFormatWithAnnotation()
         {
             // A type-derived format must win; the annotation guard must not overwrite it.
-            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.DateTime),
-                                        new TypeAnnotations { Format = "ipv4" },
-                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.DateTime), new TypeAnnotations { Format = "ipv4" }, ImmutableDictionary<string, TypeAnnotations>.Empty);
 
             Assert.AreEqual("date-time", schema.ToJsonSchema()["format"]!.GetValue<string>());
         }
@@ -72,9 +68,7 @@ namespace Vion.Contracts.Test.TypeRef
         [TestMethod]
         public void RoundTripGuidAsUuidTypeKind()
         {
-            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Guid),
-                                        TypeAnnotations.None,
-                                        ImmutableDictionary<string, TypeAnnotations>.Empty);
+            var schema = new TypeSchema(new PrimitiveTypeRef(PrimitiveKind.Guid), TypeAnnotations.None, ImmutableDictionary<string, TypeAnnotations>.Empty);
 
             var node = schema.ToJsonSchema();
             Assert.AreEqual("string", node["type"]!.GetValue<string>());
