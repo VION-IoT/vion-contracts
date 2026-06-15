@@ -127,9 +127,6 @@ namespace Vion.Contracts.Mqtt
         public const string Property = "/sw/property";
 
         // Mesh -> Dale
-        public const string PropertyGet = Property + "/get";
-
-        // Mesh -> Dale
         public const string PropertySet = Property + "/set";
 
         // Dale -> Mesh
@@ -147,9 +144,6 @@ namespace Vion.Contracts.Mqtt
         public const string PropertyState = Property + "/state";
 
         public const string MeasuringPoint = "/sw/measuringPoint";
-
-        // Mesh -> Dale
-        public const string MeasuringPointGet = MeasuringPoint + "/get";
 
         // Dale -> Mesh
         public const string MeasuringPointState = MeasuringPoint + "/state";
