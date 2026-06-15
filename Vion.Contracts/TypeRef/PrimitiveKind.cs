@@ -29,5 +29,7 @@ namespace Vion.Contracts.TypeRef
         DateTime,
 
         Duration,
+
+        Guid,
     }
 }

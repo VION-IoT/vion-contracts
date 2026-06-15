@@ -152,6 +152,7 @@ namespace Vion.Contracts.Codec
 
                 TR.PrimitiveKind.DateTime => ParseDateTime(json.GetValue<string>()),
                 TR.PrimitiveKind.Duration => XmlConvert.ToTimeSpan(json.GetValue<string>()),
+                TR.PrimitiveKind.Guid => Guid.Parse(json.GetValue<string>()),
 
                 _ => throw new PropertyValueDecodeException($"FlatBufferToClr: unknown PrimitiveKind '{p.Kind}'."),
             };
@@ -300,6 +301,9 @@ namespace Vion.Contracts.Codec
 
                 // Duration: ISO 8601 duration via XmlConvert
                 TR.PrimitiveKind.Duration when value is TimeSpan ts => JsonValue.Create(XmlConvert.ToString(ts))!,
+
+                // Guid: canonical 8-4-4-4-12 string.
+                TR.PrimitiveKind.Guid when value is Guid g => JsonValue.Create(g.ToString("D"))!,
 
                 _ => throw new PropertyValueDecodeException($"ClrToFlatBuffer: cannot encode CLR value of type '{value.GetType().FullName}' as PrimitiveKind '{p.Kind}'."),
             };
@@ -462,6 +466,13 @@ namespace Vion.Contracts.Codec
                     catch (FormatException)
                     {
                         errors.Add($"{path}: '{ds}' is not a valid ISO 8601 duration.");
+                    }
+
+                    break;
+                case TR.PrimitiveKind.Guid:
+                    if (!jv.TryGetValue<string>(out var gs) || !Guid.TryParse(gs, out _))
+                    {
+                        errors.Add($"{path}: expected a UUID string for PrimitiveKind 'Guid', got '{jv}'.");
                     }
 
                     break;
