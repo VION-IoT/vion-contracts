@@ -149,5 +149,64 @@ namespace Vion.Contracts.Test.TypeRef
             var json = metadata.ToJson();
             Assert.IsFalse(json["presentation"]!.AsObject().ContainsKey("format"));
         }
+
+        [TestMethod]
+        public void EmitNonNullRuntimeWhenThrottleIsSetEvenWithoutPersistent()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Throttle = new ThrottleMetadata { MinInterval = "1s", MinChange = "0.1" } });
+            Assert.IsFalse(meta.Runtime.IsEmpty);
+            var json = meta.ToJson();
+            Assert.IsNotNull(json["runtime"]);
+            // Not persistent -> no `persistent` key.
+            Assert.IsFalse(json["runtime"]!.AsObject().ContainsKey("persistent"));
+            Assert.AreEqual("1s", json["runtime"]!["throttle"]!["minInterval"]!.GetValue<string>());
+            Assert.AreEqual("0.1", json["runtime"]!["throttle"]!["minChange"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void OmitMinChangeAndImmediateKeysWhenAtTheirDefaults()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Throttle = new ThrottleMetadata { MinInterval = "250ms" } });
+            var throttle = meta.ToJson()["runtime"]!["throttle"]!.AsObject();
+            Assert.AreEqual("250ms", throttle["minInterval"]!.GetValue<string>());
+            Assert.IsFalse(throttle.ContainsKey("minChange"));
+            Assert.IsFalse(throttle.ContainsKey("immediate"));
+        }
+
+        [TestMethod]
+        public void EmitImmediateKeyOnlyWhenTrue()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Throttle = new ThrottleMetadata { MinInterval = "250ms", Immediate = true } });
+            Assert.IsTrue(meta.ToJson()["runtime"]!["throttle"]!["immediate"]!.GetValue<bool>());
+        }
+
+        [TestMethod]
+        public void RoundtripThrottleMetadata()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Throttle = new ThrottleMetadata { MinInterval = "2s", MinChange = "5", Immediate = false } });
+            var roundtripped = PropertyMetadataSerialization.FromJson(meta.ToJson());
+            Assert.AreEqual(meta, roundtripped);
+            Assert.AreEqual("2s", roundtripped.Runtime.Throttle!.MinInterval);
+            Assert.AreEqual("5", roundtripped.Runtime.Throttle!.MinChange);
+        }
+
+        [TestMethod]
+        public void RoundtripPersistentAndThrottleTogether()
+        {
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Persistent = true, Throttle = new ThrottleMetadata { MinInterval = "0", Immediate = true } });
+            var json = meta.ToJson();
+            Assert.IsTrue(json["runtime"]!["persistent"]!.GetValue<bool>());
+            Assert.AreEqual(meta, PropertyMetadataSerialization.FromJson(json));
+        }
     }
 }
