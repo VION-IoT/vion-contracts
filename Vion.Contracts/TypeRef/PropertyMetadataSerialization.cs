@@ -123,7 +123,34 @@ namespace Vion.Contracts.TypeRef
 
         private static JsonObject SerializeRuntime(RuntimeMetadata r)
         {
-            return new JsonObject { ["persistent"] = r.Persistent };
+            var o = new JsonObject();
+            if (r.Persistent)
+            {
+                o["persistent"] = r.Persistent;
+            }
+
+            if (r.Throttle is { } t)
+            {
+                var throttle = new JsonObject();
+                if (t.MinInterval is not null)
+                {
+                    throttle["minInterval"] = t.MinInterval;
+                }
+
+                if (t.MinChange is not null)
+                {
+                    throttle["minChange"] = t.MinChange;
+                }
+
+                if (t.Immediate)
+                {
+                    throttle["immediate"] = t.Immediate;
+                }
+
+                o["throttle"] = throttle;
+            }
+
+            return o;
         }
 
         private static RuntimeMetadata DeserializeRuntime(JsonObject o)
@@ -131,6 +158,12 @@ namespace Vion.Contracts.TypeRef
             return new RuntimeMetadata
                    {
                        Persistent = o["persistent"]?.GetValue<bool>() ?? false,
+                       Throttle = o["throttle"] is JsonObject t ? new ThrottleMetadata
+                                                                  {
+                                                                      MinInterval = t["minInterval"]?.GetValue<string>(),
+                                                                      MinChange = t["minChange"]?.GetValue<string>(),
+                                                                      Immediate = t["immediate"]?.GetValue<bool>() ?? false,
+                                                                  } : null,
                    };
         }
     }
