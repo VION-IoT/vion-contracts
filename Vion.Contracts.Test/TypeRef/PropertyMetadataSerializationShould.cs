@@ -209,5 +209,20 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.IsTrue(json["runtime"]!["persistent"]!.GetValue<bool>());
             Assert.AreEqual(meta, PropertyMetadataSerialization.FromJson(json));
         }
+
+        [TestMethod]
+        public void OmitMinIntervalKeyWhenNull()
+        {
+            // No default is assumed at the codec layer — a throttle block with only a deadband omits
+            // minInterval and round-trips it as null.
+            var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                            Presentation.None,
+                                            new RuntimeMetadata { Throttle = new ThrottleMetadata { MinChange = "0.1" } });
+            var json = meta.ToJson();
+            Assert.IsFalse(json["runtime"]!["throttle"]!.AsObject().ContainsKey("minInterval"));
+            var roundtripped = PropertyMetadataSerialization.FromJson(json);
+            Assert.IsNull(roundtripped.Runtime.Throttle!.MinInterval);
+            Assert.AreEqual("0.1", roundtripped.Runtime.Throttle!.MinChange);
+        }
     }
 }

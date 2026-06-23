@@ -10,9 +10,11 @@ namespace Vion.Contracts.TypeRef
     {
         /// <summary>
         ///     Minimum spacing between emissions, as a duration string (e.g. <c>"250ms"</c>, <c>"1s"</c>);
-        ///     <c>"0"</c> / <c>"0ms"</c> means throttling is disabled.
+        ///     <c>"0"</c> / <c>"0ms"</c> means throttling is disabled. The SDK populates the effective
+        ///     interval; <c>null</c> only if a producer omits it. No default is assumed here — the
+        ///     policy's default lives in the SDK, not at the codec layer.
         /// </summary>
-        public string MinInterval { get; init; } = "250ms";
+        public string? MinInterval { get; init; }
 
         /// <summary>
         ///     The change-threshold (deadband) string, interpreted by the value type's change logic;

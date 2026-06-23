@@ -131,7 +131,12 @@ namespace Vion.Contracts.TypeRef
 
             if (r.Throttle is { } t)
             {
-                var throttle = new JsonObject { ["minInterval"] = t.MinInterval };
+                var throttle = new JsonObject();
+                if (t.MinInterval is not null)
+                {
+                    throttle["minInterval"] = t.MinInterval;
+                }
+
                 if (t.MinChange is not null)
                 {
                     throttle["minChange"] = t.MinChange;
@@ -155,7 +160,7 @@ namespace Vion.Contracts.TypeRef
                        Persistent = o["persistent"]?.GetValue<bool>() ?? false,
                        Throttle = o["throttle"] is JsonObject t ? new ThrottleMetadata
                                                                   {
-                                                                      MinInterval = t["minInterval"]?.GetValue<string>() ?? "250ms",
+                                                                      MinInterval = t["minInterval"]?.GetValue<string>(),
                                                                       MinChange = t["minChange"]?.GetValue<string>(),
                                                                       Immediate = t["immediate"]?.GetValue<bool>() ?? false,
                                                                   } : null,
