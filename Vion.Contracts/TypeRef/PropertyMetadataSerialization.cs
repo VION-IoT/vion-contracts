@@ -153,14 +153,12 @@ namespace Vion.Contracts.TypeRef
             return new RuntimeMetadata
                    {
                        Persistent = o["persistent"]?.GetValue<bool>() ?? false,
-                       Throttle = o["throttle"] is JsonObject t
-                                      ? new ThrottleMetadata
-                                        {
-                                            MinInterval = t["minInterval"]?.GetValue<string>() ?? "250ms",
-                                            MinChange = t["minChange"]?.GetValue<string>(),
-                                            Immediate = t["immediate"]?.GetValue<bool>() ?? false,
-                                        }
-                                      : null,
+                       Throttle = o["throttle"] is JsonObject t ? new ThrottleMetadata
+                                                                  {
+                                                                      MinInterval = t["minInterval"]?.GetValue<string>() ?? "250ms",
+                                                                      MinChange = t["minChange"]?.GetValue<string>(),
+                                                                      Immediate = t["immediate"]?.GetValue<bool>() ?? false,
+                                                                  } : null,
                    };
         }
     }

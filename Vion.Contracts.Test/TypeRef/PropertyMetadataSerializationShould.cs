@@ -159,6 +159,7 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.IsFalse(meta.Runtime.IsEmpty);
             var json = meta.ToJson();
             Assert.IsNotNull(json["runtime"]);
+
             // Not persistent -> no `persistent` key.
             Assert.IsFalse(json["runtime"]!.AsObject().ContainsKey("persistent"));
             Assert.AreEqual("1s", json["runtime"]!["throttle"]!["minInterval"]!.GetValue<string>());
