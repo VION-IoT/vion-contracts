@@ -3,5 +3,5 @@
 namespace Vion.Contracts.Events.CloudToMesh
 {
     [Schema("UnsubscribePropertiesPayload")]
-    public record UnsubscribePropertiesPayload(Dictionary<string, Dictionary<string, List<string>>> ProviderServiceProperties) : IMessage;
+    public record UnsubscribePropertiesPayload(List<Subscription> Subscriptions) : IMessage;
 }
