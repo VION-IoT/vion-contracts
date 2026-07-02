@@ -69,6 +69,21 @@ namespace Vion.Contracts.Mqtt
         // Mesh -> Cloud
         public const string LogLevelState = "/cloud/system/logLevel/state";
 
+        // Cloud -> Mesh
+        // Start / stop a named base-image "system service" (system-control family, beside restart / logLevel). The
+        // service name is the FINAL topic segment so it can be authorized per service — compose as
+        // SystemServiceStart + "/" + <serviceName> (e.g. .../service/start/remote-console). Mesh dispatches on the
+        // composed topic and stays generic (start <serviceName> <arguments>); not an SP property, so invisible on
+        // the service surface.
+        public const string SystemServiceStart = "/cloud/system/service/start";
+
+        // Cloud -> Mesh
+        public const string SystemServiceStop = "/cloud/system/service/stop";
+
+        // Mesh -> Cloud
+        // ServiceStateChange events mesh emits whenever a system service starts / stops / fails.
+        public const string SystemServiceState = "/cloud/system/service/state";
+
         // Mesh -> Cloud
         public const string SystemHealthState = "/cloud/system/health/state";
 
