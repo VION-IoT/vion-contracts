@@ -19,7 +19,7 @@ namespace Vion.Contracts.Test.Events.MeshToCloud
         [TestMethod]
         public void CarryTheWireSchemaName()
         {
-            var schema = typeof(ServiceStatePayload).GetCustomAttribute<SchemaAttribute>();
+            var schema = typeof(SystemServiceStatePayload).GetCustomAttribute<SchemaAttribute>();
 
             Assert.IsNotNull(schema, "event must carry a [Schema] attribute");
             Assert.AreEqual("SystemServiceStatePayload", schema.Schema);
@@ -28,12 +28,12 @@ namespace Vion.Contracts.Test.Events.MeshToCloud
         [TestMethod]
         public void RoundtripWithOptionalInformation()
         {
-            var payload = new ServiceStatePayload("remote-vpn",
+            var payload = new SystemServiceStatePayload("remote-vpn",
                                                   "0195f0d1-1111-7abc-8def-000000000001",
                                                   ServiceState.Started,
                                                   new Dictionary<string, string> { ["tunnelAddress"] = "100.64.0.7" });
 
-            var roundtripped = JsonSerializer.Deserialize<ServiceStatePayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
+            var roundtripped = JsonSerializer.Deserialize<SystemServiceStatePayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
 
             Assert.AreEqual("remote-vpn", roundtripped.ServiceName);
             Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", roundtripped.InstanceId);
@@ -45,9 +45,9 @@ namespace Vion.Contracts.Test.Events.MeshToCloud
         [TestMethod]
         public void RoundtripWithoutInformation()
         {
-            var payload = new ServiceStatePayload("remote-vpn", "s-1", ServiceState.Stopped);
+            var payload = new SystemServiceStatePayload("remote-vpn", "s-1", ServiceState.Stopped);
 
-            var roundtripped = JsonSerializer.Deserialize<ServiceStatePayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
+            var roundtripped = JsonSerializer.Deserialize<SystemServiceStatePayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
 
             Assert.AreEqual(ServiceState.Stopped, roundtripped.State);
             Assert.IsNull(roundtripped.Information);

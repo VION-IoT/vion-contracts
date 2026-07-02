@@ -12,7 +12,7 @@ namespace Vion.Contracts.Events.MeshToCloud
     ///     for the audit trail.
     /// </summary>
     [Schema("SystemServiceStatePayload")]
-    public record ServiceStatePayload(string ServiceName, string InstanceId, ServiceState State, Dictionary<string, string>? Information = null) : IMessage;
+    public record SystemServiceStatePayload(string ServiceName, string InstanceId, ServiceState State, Dictionary<string, string>? Information = null) : IMessage;
 
     public enum ServiceState
     {
