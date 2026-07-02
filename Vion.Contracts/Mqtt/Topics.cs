@@ -81,7 +81,7 @@ namespace Vion.Contracts.Mqtt
         public const string SystemServiceStop = "/cloud/system/service/stop";
 
         // Mesh -> Cloud
-        // ServiceStateChanged events mesh emits whenever a system service starts / stops / fails.
+        // ServiceStateChange events mesh emits whenever a system service starts / stops / fails.
         public const string SystemServiceState = "/cloud/system/service/state";
 
         // Mesh -> Cloud

@@ -12,6 +12,6 @@ namespace Vion.Contracts.Events.CloudToMesh
     ///     <see cref="Vion.Contracts.Constants.RemoteAccessConstants.Arguments" />). See the architecture spec
     ///     <c>2026-06-30-on-demand-remote-gateway-access</c>.
     /// </summary>
-    [Schema("StartSystemService")]
+    [Schema("StartSystemServicePayload")]
     public record StartSystemServicePayload(List<ServiceArgument> Arguments) : IMessage;
 }

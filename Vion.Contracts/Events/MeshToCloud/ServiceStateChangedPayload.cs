@@ -11,8 +11,8 @@ namespace Vion.Contracts.Events.MeshToCloud
     ///     (<see cref="SystemEventType.SystemServiceStarted" /> / <see cref="SystemEventType.SystemServiceStopped" />)
     ///     for the audit trail.
     /// </summary>
-    [Schema("ServiceStateChanged")]
-    public record ServiceStateChangedPayload(string ServiceName, string InstanceId, ServiceState State, Dictionary<string, string>? Information = null) : IMessage;
+    [Schema("SystemServiceStatePayload")]
+    public record ServiceStatePayload(string ServiceName, string InstanceId, ServiceState State, Dictionary<string, string>? Information = null) : IMessage;
 
     public enum ServiceState
     {
