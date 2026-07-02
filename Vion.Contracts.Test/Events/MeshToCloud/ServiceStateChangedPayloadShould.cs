@@ -29,9 +29,9 @@ namespace Vion.Contracts.Test.Events.MeshToCloud
         public void RoundtripWithOptionalInformation()
         {
             var payload = new SystemServiceStatePayload("remote-vpn",
-                                                  "0195f0d1-1111-7abc-8def-000000000001",
-                                                  ServiceState.Started,
-                                                  new Dictionary<string, string> { ["tunnelAddress"] = "100.64.0.7" });
+                                                        "0195f0d1-1111-7abc-8def-000000000001",
+                                                        ServiceState.Started,
+                                                        new Dictionary<string, string> { ["tunnelAddress"] = "100.64.0.7" });
 
             var roundtripped = JsonSerializer.Deserialize<SystemServiceStatePayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
 
