@@ -7,10 +7,10 @@ namespace Vion.Contracts.Events.CloudToMesh
     ///     service is the FINAL segment of the topic — compose as
     ///     <see cref="Vion.Contracts.Mqtt.Topics.ServiceStart" /> + "/" + &lt;serviceName&gt; (e.g.
     ///     <c>.../service/start/remoteConsole</c>) — so it is authorized per service and stays invisible on the
-    ///     service-provider surface. Parameters travel as named
-    ///     <see cref="Vion.Contracts.Constants.RemoteAccessConstants.Arguments" />. See the architecture spec
+    ///     service-provider surface. Parameters travel as a list of named <see cref="ServiceArgument" />s (names in
+    ///     <see cref="Vion.Contracts.Constants.RemoteAccessConstants.Arguments" />). See the architecture spec
     ///     <c>2026-06-30-on-demand-remote-gateway-access</c>.
     /// </summary>
     [Schema("StartService")]
-    public record StartServicePayload(Dictionary<string, string> Arguments) : IMessage;
+    public record StartServicePayload(List<ServiceArgument> Arguments) : IMessage;
 }

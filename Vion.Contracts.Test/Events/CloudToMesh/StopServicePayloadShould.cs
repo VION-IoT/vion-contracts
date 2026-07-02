@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -11,11 +11,10 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
     [TestClass]
     public class StopServicePayloadShould
     {
-        // Mirrors the platform wire convention: camelCase property names + dictionary keys.
+        // Mirrors the platform wire convention: camelCase property names.
         private static readonly JsonSerializerOptions WireOptions = new()
                                                                     {
                                                                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                                                                        DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
                                                                     };
 
         [TestMethod]
@@ -30,28 +29,30 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         [TestMethod]
         public void RoundtripTheInstanceIdentifyingArgument()
         {
-            var command = new StopServicePayload(new Dictionary<string, string>
-                                          {
-                                              [RemoteAccessConstants.Arguments.SessionId] = "0195f0d1-1111-7abc-8def-000000000001",
-                                          });
+            var command = new StopServicePayload([
+                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "0195f0d1-1111-7abc-8def-000000000001"),
+            ]);
 
             var roundtripped = JsonSerializer.Deserialize<StopServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
 
-            Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", roundtripped.Arguments[RemoteAccessConstants.Arguments.SessionId]);
+            var argument = roundtripped.Arguments.Single();
+            Assert.AreEqual(RemoteAccessConstants.Arguments.SessionId, argument.Name);
+            Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", argument.Value);
         }
 
         [TestMethod]
-        public void SerializeArgumentsAsACamelCaseKeyedObject()
+        public void SerializeArgumentsAsACamelCaseNameValueList()
         {
-            var command = new StopServicePayload(new Dictionary<string, string>
-                                          {
-                                              [RemoteAccessConstants.Arguments.SessionId] = "s-1",
-                                          });
+            var command = new StopServicePayload([
+                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "s-1"),
+            ]);
 
             var json = JsonNode.Parse(JsonSerializer.Serialize(command, WireOptions))!;
 
-            Assert.IsNotNull(json["arguments"], "arguments must serialise camelCase");
-            Assert.AreEqual("s-1", json["arguments"]!["sessionId"]!.GetValue<string>());
+            var arguments = json["arguments"]!.AsArray();
+            Assert.HasCount(1, arguments);
+            Assert.AreEqual("sessionId", arguments[0]!["name"]!.GetValue<string>());
+            Assert.AreEqual("s-1", arguments[0]!["value"]!.GetValue<string>());
         }
     }
 }
