@@ -70,12 +70,14 @@ namespace Vion.Contracts.Mqtt
         public const string LogLevelState = "/cloud/system/logLevel/state";
 
         // Cloud -> Mesh
-        // Remote-access session control (system-control family, beside restart / logLevel). One topic per
-        // profile; start vs. stop is carried in the payload. Mesh dispatches by topic, so these are wire contract.
-        public const string RemoteVpnCommand = "/cloud/system/remoteVpn";
+        // Start / stop a named base-image service (system-control family, beside restart / logLevel). The service
+        // name is the FINAL topic segment so it can be authorized per service — compose as
+        // ServiceStart + "/" + <serviceName> (e.g. .../service/start/remoteConsole, gated by RemoteConsoleAccess).
+        // Mesh dispatches on the composed topic; not an SP property, so invisible on the service surface.
+        public const string ServiceStart = "/cloud/system/service/start";
 
         // Cloud -> Mesh
-        public const string RemoteConsoleCommand = "/cloud/system/remoteConsole";
+        public const string ServiceStop = "/cloud/system/service/stop";
 
         // Mesh -> Cloud
         public const string SystemHealthState = "/cloud/system/health/state";
