@@ -24,8 +24,9 @@ namespace Vion.Contracts.Constants
         }
 
         /// <summary>
-        ///     Well-known <see cref="Vion.Contracts.Events.CloudToMesh.ServiceArgument" /> names for the remote-access
-        ///     StartService command (StopService needs only <see cref="SessionId" />).
+        ///     Well-known keys of the <c>Arguments</c> dictionary carried by the remote-access
+        ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartService" /> command (StopService needs only
+        ///     <see cref="SessionId" />).
         /// </summary>
         public static class Arguments
         {
