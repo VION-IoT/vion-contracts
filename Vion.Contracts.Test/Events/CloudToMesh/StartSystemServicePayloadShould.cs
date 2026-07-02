@@ -9,7 +9,7 @@ using Vion.Contracts.Events.CloudToMesh;
 namespace Vion.Contracts.Test.Events.CloudToMesh
 {
     [TestClass]
-    public class StartServicePayloadShould
+    public class StartSystemServicePayloadShould
     {
         // Mirrors the platform wire convention: camelCase property names.
         private static readonly JsonSerializerOptions WireOptions = new()
@@ -21,23 +21,23 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         public void CarryTheWireSchemaNameThatDrivesDispatch()
         {
             // The schema name is the wire contract cloud-api stamps and mesh validates on; a rename breaks dispatch.
-            var schema = typeof(StartServicePayload).GetCustomAttribute<SchemaAttribute>();
+            var schema = typeof(StartSystemServicePayload).GetCustomAttribute<SchemaAttribute>();
 
             Assert.IsNotNull(schema, "command must carry a [Schema] attribute");
-            Assert.AreEqual("StartService", schema.Schema);
+            Assert.AreEqual("StartSystemService", schema.Schema);
         }
 
         [TestMethod]
         public void RoundtripItsNamedArguments()
         {
-            var command = new StartServicePayload([
+            var command = new StartSystemServicePayload([
                 new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "0195f0d1-1111-7abc-8def-000000000001"),
                 new ServiceArgument(RemoteAccessConstants.Arguments.LoginServerUrl, "https://abc.session.example"),
                 new ServiceArgument(RemoteAccessConstants.Arguments.EphemeralAuthKey, "authkey-xyz"),
                 new ServiceArgument(RemoteAccessConstants.Arguments.ExpiresAtUtc, "2026-07-02T10:00:00Z"),
             ]);
 
-            var roundtripped = JsonSerializer.Deserialize<StartServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
+            var roundtripped = JsonSerializer.Deserialize<StartSystemServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
 
             Assert.HasCount(4, roundtripped.Arguments);
             var byName = roundtripped.Arguments.ToDictionary(a => a.Name, a => a.Value);
@@ -49,7 +49,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         [TestMethod]
         public void SerializeArgumentsAsACamelCaseNameValueList()
         {
-            var command = new StartServicePayload([
+            var command = new StartSystemServicePayload([
                 new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "s-1"),
             ]);
 
