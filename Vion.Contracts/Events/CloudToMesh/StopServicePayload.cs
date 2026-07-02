@@ -10,5 +10,5 @@ namespace Vion.Contracts.Events.CloudToMesh
     ///     architecture spec <c>2026-06-30-on-demand-remote-gateway-access</c>.
     /// </summary>
     [Schema("StopService")]
-    public record StopService(Dictionary<string, string> Arguments) : IMessage;
+    public record StopServicePayload(Dictionary<string, string> Arguments) : IMessage;
 }

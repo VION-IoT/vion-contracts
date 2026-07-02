@@ -2,8 +2,8 @@ namespace Vion.Contracts.Constants
 {
     /// <summary>
     ///     Shared vocabulary for on-demand remote access, which rides the generic
-    ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartService" /> /
-    ///     <see cref="Vion.Contracts.Events.CloudToMesh.StopService" />
+    ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartServicePayload" /> /
+    ///     <see cref="Vion.Contracts.Events.CloudToMesh.StopServicePayload" />
     ///     commands. <see cref="Services" /> are the final topic segment (authorized per service);
     ///     <see cref="Arguments" /> are the argument names carried in the command; <see cref="Sync" /> is the
     ///     remote-access use of the sync-status convergence channel. Keeps these strings off the wire as literals in
@@ -25,7 +25,7 @@ namespace Vion.Contracts.Constants
 
         /// <summary>
         ///     Well-known keys of the <c>Arguments</c> dictionary carried by the remote-access
-        ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartService" /> command (StopService needs only
+        ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartServicePayload" /> command (StopService needs only
         ///     <see cref="SessionId" />).
         /// </summary>
         public static class Arguments
@@ -56,28 +56,6 @@ namespace Vion.Contracts.Constants
             ///     <c>SyncStatusEntity.ObjectType</c>; it must equal <c>RemoteAccessSessionEntity.AggregateType</c>.
             /// </summary>
             public const string ObjectType = "RemoteAccessSession";
-
-            /// <summary>
-            ///     Well-known keys the gateway populates in <c>SyncStatusUpdatedEventPayload.Feedback</c> as a session
-            ///     converges, and cloud-api reads back onto the session record.
-            /// </summary>
-            public static class FeedbackKeys
-            {
-                /// <summary>The gateway's address on the session tailnet (e.g. <c>100.x.y.z</c>).</summary>
-                public const string TunnelAddress = "tunnelAddress";
-
-                /// <summary>The tunnel network interface the session brought up.</summary>
-                public const string TunnelInterface = "tunnelInterface";
-
-                /// <summary>The gateway's node identifier within the session tailnet.</summary>
-                public const string TailnetNodeId = "tailnetNodeId";
-
-                /// <summary>Whether host sshd is listening on the tunnel interface (console service only).</summary>
-                public const string SshdListening = "sshdListening";
-
-                /// <summary>Human-readable failure detail when a session fails to converge.</summary>
-                public const string Error = "error";
-            }
         }
     }
 }

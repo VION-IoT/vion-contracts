@@ -12,5 +12,5 @@ namespace Vion.Contracts.Events.CloudToMesh
     ///     <c>2026-06-30-on-demand-remote-gateway-access</c>.
     /// </summary>
     [Schema("StartService")]
-    public record StartService(Dictionary<string, string> Arguments) : IMessage;
+    public record StartServicePayload(Dictionary<string, string> Arguments) : IMessage;
 }

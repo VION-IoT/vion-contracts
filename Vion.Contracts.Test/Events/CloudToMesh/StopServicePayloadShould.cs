@@ -9,7 +9,7 @@ using Vion.Contracts.Events.CloudToMesh;
 namespace Vion.Contracts.Test.Events.CloudToMesh
 {
     [TestClass]
-    public class StopServiceShould
+    public class StopServicePayloadShould
     {
         // Mirrors the platform wire convention: camelCase property names + dictionary keys.
         private static readonly JsonSerializerOptions WireOptions = new()
@@ -21,7 +21,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         [TestMethod]
         public void CarryTheWireSchemaNameThatDrivesDispatch()
         {
-            var schema = typeof(StopService).GetCustomAttribute<SchemaAttribute>();
+            var schema = typeof(StopServicePayload).GetCustomAttribute<SchemaAttribute>();
 
             Assert.IsNotNull(schema, "command must carry a [Schema] attribute");
             Assert.AreEqual("StopService", schema.Schema);
@@ -30,12 +30,12 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         [TestMethod]
         public void RoundtripTheInstanceIdentifyingArgument()
         {
-            var command = new StopService(new Dictionary<string, string>
+            var command = new StopServicePayload(new Dictionary<string, string>
                                           {
                                               [RemoteAccessConstants.Arguments.SessionId] = "0195f0d1-1111-7abc-8def-000000000001",
                                           });
 
-            var roundtripped = JsonSerializer.Deserialize<StopService>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
+            var roundtripped = JsonSerializer.Deserialize<StopServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
 
             Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", roundtripped.Arguments[RemoteAccessConstants.Arguments.SessionId]);
         }
@@ -43,7 +43,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         [TestMethod]
         public void SerializeArgumentsAsACamelCaseKeyedObject()
         {
-            var command = new StopService(new Dictionary<string, string>
+            var command = new StopServicePayload(new Dictionary<string, string>
                                           {
                                               [RemoteAccessConstants.Arguments.SessionId] = "s-1",
                                           });
