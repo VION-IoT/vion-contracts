@@ -24,7 +24,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
             var schema = typeof(StartSystemServicePayload).GetCustomAttribute<SchemaAttribute>();
 
             Assert.IsNotNull(schema, "command must carry a [Schema] attribute");
-            Assert.AreEqual("StartSystemService", schema.Schema);
+            Assert.AreEqual("StartSystemServicePayload", schema.Schema);
         }
 
         [TestMethod]
