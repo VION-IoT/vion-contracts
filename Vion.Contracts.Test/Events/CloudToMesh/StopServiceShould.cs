@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Vion.Contracts.Constants;
 using Vion.Contracts.Events;
 using Vion.Contracts.Events.CloudToMesh;
@@ -38,6 +39,21 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
             var argument = roundtripped.Arguments.Single();
             Assert.AreEqual(RemoteAccessConstants.Arguments.SessionId, argument.Name);
             Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", argument.Value);
+        }
+
+        [TestMethod]
+        public void SerializeArgumentsAsACamelCaseNameValueList()
+        {
+            var command = new StopService([
+                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "s-1"),
+            ]);
+
+            var json = JsonNode.Parse(JsonSerializer.Serialize(command, WireOptions))!;
+
+            var arguments = json["arguments"]!.AsArray();
+            Assert.HasCount(1, arguments);
+            Assert.AreEqual("sessionId", arguments[0]!["name"]!.GetValue<string>());
+            Assert.AreEqual("s-1", arguments[0]!["value"]!.GetValue<string>());
         }
     }
 }
