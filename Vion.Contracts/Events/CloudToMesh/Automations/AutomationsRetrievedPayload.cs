@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Vion.Contracts.Events.CloudToMesh.Automations
@@ -6,5 +7,7 @@ namespace Vion.Contracts.Events.CloudToMesh.Automations
     public class AutomationsRetrievedPayload : IMessage
     {
         public required List<Automation> Automations { get; set; }
+
+        public Dictionary<Guid, ObjectSyncStatus>? SyncStatusByObjectId { get; set; }
     }
 }
