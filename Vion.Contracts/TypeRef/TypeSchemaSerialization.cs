@@ -87,7 +87,10 @@ namespace Vion.Contracts.TypeRef
             var members = new JsonArray();
             foreach (var m in e.Members)
             {
-                members.Add(m);
+                // Add(rawValue) turns the value into a node by looking up its JsonTypeInfo from the default serializer.
+                // That lookup is normally reflection-based, but NativeAOT defaults the resolver to EmptyJsonTypeInfoResolver,
+                // so any raw value (string here) throws. Casting to JsonNode binds the non-generic Add, which needs no such lookup.
+                members.Add((JsonNode?)m);
             }
 
             return new JsonObject
@@ -111,7 +114,10 @@ namespace Vion.Contracts.TypeRef
             var required = new JsonArray();
             foreach (var r in s.Required)
             {
-                required.Add(r);
+                // Add(rawValue) turns the value into a node by looking up its JsonTypeInfo from the default serializer.
+                // That lookup is normally reflection-based, but NativeAOT defaults the resolver to EmptyJsonTypeInfoResolver,
+                // so any raw value (string here) throws. Casting to JsonNode binds the non-generic Add, which needs no such lookup.
+                required.Add((JsonNode?)r);
             }
 
             return new JsonObject
