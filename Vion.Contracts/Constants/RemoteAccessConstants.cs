@@ -26,15 +26,14 @@ namespace Vion.Contracts.Constants
         }
 
         /// <summary>
-        ///     Well-known <see cref="Vion.Contracts.Events.CloudToMesh.ServiceArgument" /> names carried by the
-        ///     remote-access <see cref="Vion.Contracts.Events.CloudToMesh.StartSystemServicePayload" /> command
-        ///     (StopSystemService needs only <see cref="SessionId" />).
+        ///     Well-known <see cref="Vion.Contracts.Events.CloudToMesh.ServiceArgument" /> names carried in the
+        ///     <c>Arguments</c> of the remote-access
+        ///     <see cref="Vion.Contracts.Events.CloudToMesh.StartSystemServicePayload" /> command. The session id is
+        ///     NOT an argument — it is the command's required top-level <c>InstanceId</c> field, and it is all
+        ///     StopSystemService needs.
         /// </summary>
         public static class Arguments
         {
-            /// <summary>The RemoteAccessSession id; also names the gateway's per-session unit instance.</summary>
-            public const string SessionId = "sessionId";
-
             /// <summary>The session's dedicated Headscale control-server URL (HTTPS).</summary>
             public const string LoginServerUrl = "loginServerUrl";
 
