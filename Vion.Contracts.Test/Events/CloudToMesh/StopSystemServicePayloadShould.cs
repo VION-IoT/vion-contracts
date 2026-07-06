@@ -1,8 +1,6 @@
-using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Vion.Contracts.Constants;
 using Vion.Contracts.Events;
 using Vion.Contracts.Events.CloudToMesh;
 
@@ -27,32 +25,23 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         }
 
         [TestMethod]
-        public void RoundtripTheInstanceIdentifyingArgument()
+        public void RoundtripItsInstanceId()
         {
-            var command = new StopSystemServicePayload([
-                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "0195f0d1-1111-7abc-8def-000000000001"),
-            ]);
+            var command = new StopSystemServicePayload("0195f0d1-1111-7abc-8def-000000000001");
 
             var roundtripped = JsonSerializer.Deserialize<StopSystemServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
 
-            var argument = roundtripped.Arguments.Single();
-            Assert.AreEqual(RemoteAccessConstants.Arguments.SessionId, argument.Name);
-            Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", argument.Value);
+            Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", roundtripped.InstanceId);
         }
 
         [TestMethod]
-        public void SerializeArgumentsAsACamelCaseNameValueList()
+        public void SerializeInstanceIdAsACamelCaseTopLevelField()
         {
-            var command = new StopSystemServicePayload([
-                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "s-1"),
-            ]);
+            var command = new StopSystemServicePayload("s-1");
 
             var json = JsonNode.Parse(JsonSerializer.Serialize(command, WireOptions))!;
 
-            var arguments = json["arguments"]!.AsArray();
-            Assert.HasCount(1, arguments);
-            Assert.AreEqual("sessionId", arguments[0]!["name"]!.GetValue<string>());
-            Assert.AreEqual("s-1", arguments[0]!["value"]!.GetValue<string>());
+            Assert.AreEqual("s-1", json["instanceId"]!.GetValue<string>());
         }
     }
 }

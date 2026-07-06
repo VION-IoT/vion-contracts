@@ -28,10 +28,10 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         }
 
         [TestMethod]
-        public void RoundtripItsNamedArguments()
+        public void RoundtripItsInstanceIdAndNamedArguments()
         {
-            var command = new StartSystemServicePayload([
-                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "0195f0d1-1111-7abc-8def-000000000001"),
+            var command = new StartSystemServicePayload("0195f0d1-1111-7abc-8def-000000000001",
+            [
                 new ServiceArgument(RemoteAccessConstants.Arguments.LoginServerUrl, "https://abc.session.example"),
                 new ServiceArgument(RemoteAccessConstants.Arguments.EphemeralAuthKey, "authkey-xyz"),
                 new ServiceArgument(RemoteAccessConstants.Arguments.ExpiresAtUtc, "2026-07-02T10:00:00Z"),
@@ -39,26 +39,29 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
 
             var roundtripped = JsonSerializer.Deserialize<StartSystemServicePayload>(JsonSerializer.Serialize(command, WireOptions), WireOptions)!;
 
-            Assert.HasCount(4, roundtripped.Arguments);
-            var byName = roundtripped.Arguments.ToDictionary(a => a.Name, a => a.Value);
+            Assert.AreEqual("0195f0d1-1111-7abc-8def-000000000001", roundtripped.InstanceId);
+            Assert.HasCount(3, roundtripped.Arguments);
+            var byName = roundtripped.Arguments.ToDictionary(argument => argument.Name, argument => argument.Value);
             Assert.AreEqual("https://abc.session.example", byName[RemoteAccessConstants.Arguments.LoginServerUrl]);
             Assert.AreEqual("authkey-xyz", byName[RemoteAccessConstants.Arguments.EphemeralAuthKey]);
             Assert.AreEqual("2026-07-02T10:00:00Z", byName[RemoteAccessConstants.Arguments.ExpiresAtUtc]);
         }
 
         [TestMethod]
-        public void SerializeArgumentsAsACamelCaseNameValueList()
+        public void SerializeInstanceIdTopLevelAndArgumentsAsACamelCaseNameValueList()
         {
-            var command = new StartSystemServicePayload([
-                new ServiceArgument(RemoteAccessConstants.Arguments.SessionId, "s-1"),
+            var command = new StartSystemServicePayload("s-1",
+            [
+                new ServiceArgument(RemoteAccessConstants.Arguments.LoginServerUrl, "https://abc.session.example"),
             ]);
 
             var json = JsonNode.Parse(JsonSerializer.Serialize(command, WireOptions))!;
 
+            Assert.AreEqual("s-1", json["instanceId"]!.GetValue<string>());
             var arguments = json["arguments"]!.AsArray();
             Assert.HasCount(1, arguments);
-            Assert.AreEqual("sessionId", arguments[0]!["name"]!.GetValue<string>());
-            Assert.AreEqual("s-1", arguments[0]!["value"]!.GetValue<string>());
+            Assert.AreEqual("loginServerUrl", arguments[0]!["name"]!.GetValue<string>());
+            Assert.AreEqual("https://abc.session.example", arguments[0]!["value"]!.GetValue<string>());
         }
     }
 }
