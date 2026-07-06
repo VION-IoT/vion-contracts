@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -19,6 +20,7 @@ namespace Vion.Contracts.Codec
     ///     DateTime / Duration / enum) — the value is always coerced via the declared schema, never
     ///     inferred from the literal.
     /// </summary>
+    [RequiresDynamicCode("Converts between JSON and arbitrary CLR types via runtime reflection and dynamic generic instantiation; not supported under NativeAOT.")]
     public static class PropertyValueCodec
     {
         private static readonly ConcurrentDictionary<Type, MethodInfo> BuildImmutableArrayCache = new();

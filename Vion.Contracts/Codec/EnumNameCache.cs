@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Vion.Contracts.Codec
 {
@@ -9,6 +10,7 @@ namespace Vion.Contracts.Codec
     ///     to avoid the per-call reflection cost of <see cref="Enum.GetName(Type, object)" /> on the
     ///     codec hot path. Thread-safe (<see cref="ConcurrentDictionary{TKey,TValue}" />).
     /// </summary>
+    [RequiresDynamicCode("Enum.GetValues over a runtime Type requires dynamic code; not supported under NativeAOT.")]
     internal static class EnumNameCache
     {
         private static readonly ConcurrentDictionary<Type, EnumMap> Cache = new();
