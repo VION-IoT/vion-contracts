@@ -127,6 +127,16 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
+        public void ReturnGuidForGuidKind()
+        {
+            // Act
+            var type = PrimitiveKind.Guid.ClrType();
+
+            // Assert
+            Assert.AreEqual(typeof(Guid), type);
+        }
+
+        [TestMethod]
         public void ReturnNullableBoolForBoolKindWhenIsNullable()
         {
             // Act
@@ -184,6 +194,28 @@ namespace Vion.Contracts.Test.TypeRef
 
             // Assert
             Assert.AreEqual(typeof(TimeSpan?), type);
+        }
+
+        [TestMethod]
+        public void ReturnNullableGuidForGuidKindWhenIsNullable()
+        {
+            // Act
+            var type = PrimitiveKind.Guid.ClrType(true);
+
+            // Assert
+            Assert.AreEqual(typeof(Guid?), type);
+        }
+
+        [TestMethod]
+        public void HandleEveryPrimitiveKind()
+        {
+            // Guard: every kind must resolve to a CLR type without falling through to the
+            // NotSupportedException default. Adding a PrimitiveKind without extending ClrType fails here.
+            foreach (var kind in Enum.GetValues<PrimitiveKind>())
+            {
+                Assert.IsNotNull(kind.ClrType(), $"ClrType() did not handle {kind}.");
+                Assert.IsNotNull(kind.ClrType(true), $"ClrType(true) did not handle {kind}.");
+            }
         }
     }
 }

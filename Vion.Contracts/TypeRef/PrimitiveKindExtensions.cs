@@ -25,6 +25,7 @@ namespace Vion.Contracts.TypeRef
                 PrimitiveKind.String => typeof(string),
                 PrimitiveKind.DateTime => isNullable ? typeof(DateTime?) : typeof(DateTime),
                 PrimitiveKind.Duration => isNullable ? typeof(TimeSpan?) : typeof(TimeSpan),
+                PrimitiveKind.Guid => isNullable ? typeof(Guid?) : typeof(Guid),
                 _ => throw new NotSupportedException($"Unsupported primitive kind: {kind}"),
             };
         }

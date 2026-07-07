@@ -15,7 +15,7 @@ namespace Vion.Contracts.Codec
         /// <param name="kind">The primitive kind to convert to.</param>
         /// <returns>
         ///     <c>bool</c>, <c>long</c> (for any integer kind), <c>double</c> (for any number kind), <c>string</c>,
-        ///     <c>DateTime</c>, or <c>TimeSpan</c>; <c>null</c> when <paramref name="value" /> is <c>null</c>.
+        ///     <c>DateTime</c>, <c>TimeSpan</c>, or <c>Guid</c>; <c>null</c> when <paramref name="value" /> is <c>null</c>.
         /// </returns>
         public static object? ToClrPrimitive(this JsonNode? value, PrimitiveKind kind)
         {
@@ -32,6 +32,7 @@ namespace Vion.Contracts.Codec
                 PrimitiveKind.String => value.GetValue<string>(),
                 PrimitiveKind.DateTime => DateTime.Parse(value.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 PrimitiveKind.Duration => XmlConvert.ToTimeSpan(value.GetValue<string>()),
+                PrimitiveKind.Guid => Guid.Parse(value.GetValue<string>()),
                 _ => throw new NotSupportedException($"Unsupported primitive kind: {kind}"),
             };
         }

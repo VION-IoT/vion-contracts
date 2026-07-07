@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Nodes;
 using System.Xml;
 using Vion.Contracts.Codec;
@@ -196,6 +198,21 @@ namespace Vion.Contracts.Test.Codec
         }
 
         [TestMethod]
+        public void ConvertJsonNodeValueToGuid()
+        {
+            // Arrange
+            var expected = new Guid("12345678-1234-1234-1234-1234567890ab");
+            JsonNode value = JsonValue.Create(expected.ToString("D"));
+
+            // Act
+            var result = value.ToClrPrimitive(PrimitiveKind.Guid);
+
+            // Assert
+            Assert.IsInstanceOfType<Guid>(result);
+            Assert.AreEqual(expected, result);
+        }
+
+        [TestMethod]
         public void ReturnNullForNullJsonNodeValue()
         {
             // Arrange
@@ -206,6 +223,43 @@ namespace Vion.Contracts.Test.Codec
 
             // Assert
             Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void HandleEveryPrimitiveKind()
+        {
+            // Arrange - A representative JSON value per kind. This map must cover every PrimitiveKind: the
+            // coverage assertion below trips when a new kind is added without a sample here, forcing
+            // ToClrPrimitive to be revisited at the same time.
+            var samples = new Dictionary<PrimitiveKind, JsonNode?>
+                          {
+                              [PrimitiveKind.Bool] = JsonValue.Create(true),
+                              [PrimitiveKind.String] = JsonValue.Create("x"),
+                              [PrimitiveKind.Byte] = JsonValue.Create(1L),
+                              [PrimitiveKind.Short] = JsonValue.Create(1L),
+                              [PrimitiveKind.UShort] = JsonValue.Create(1L),
+                              [PrimitiveKind.Int] = JsonValue.Create(1L),
+                              [PrimitiveKind.UInt] = JsonValue.Create(1L),
+                              [PrimitiveKind.Long] = JsonValue.Create(1L),
+                              [PrimitiveKind.Float] = JsonValue.Create(1.0),
+                              [PrimitiveKind.Double] = JsonValue.Create(1.0),
+                              [PrimitiveKind.DateTime] = JsonValue.Create("2026-01-01T00:00:00.0000000Z"),
+                              [PrimitiveKind.Duration] = JsonValue.Create("PT1H"),
+                              [PrimitiveKind.Guid] = JsonValue.Create("12345678-1234-1234-1234-1234567890ab"),
+                          };
+
+            // Guard: the sample map covers every kind. A new PrimitiveKind trips this until a sample is added.
+            CollectionAssert.AreEquivalent(Enum.GetValues<PrimitiveKind>(), samples.Keys.ToArray());
+
+            // Every kind converts without falling through to the NotSupportedException default.
+            foreach (var (kind, node) in samples)
+            {
+                // Act
+                var result = node.ToClrPrimitive(kind);
+
+                // Assert
+                Assert.IsNotNull(result, $"ToClrPrimitive did not handle {kind}.");
+            }
         }
     }
 }
