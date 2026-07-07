@@ -63,10 +63,25 @@ sparingly and locally, never to opt a whole file out.
 
 **JSON event payloads** (in `Events/<Direction>/`):
 
-- Decorate the class with `[Schema("YourPayloadName")]`. The attribute
-  binds the class to the MQTT `schema` user-property value carried on
-  every message — that's how receivers dispatch. Missing or mismatched
-  schema names are bugs.
+- **The `[Schema("...")]` value must exactly match the type name.**
+  The string is the class/record name verbatim — e.g.
+  `[Schema("ServiceProviderRegistrationDeniedPayload")]` on
+  `record ServiceProviderRegistrationDeniedPayload(...) : IMessage`.
+  The attribute binds the class to the MQTT `schema` user-property
+  carried on every message; receivers dispatch on it, and **mesh
+  validates inbound messages by comparing `nameof(T)` of the expected
+  type against that `schema` string**. If the attribute value drifts
+  from the type name the message silently fails validation — a
+  wire-breaking bug, not cosmetic.
+- **Name the type after what it carries, and always end it in
+  `Payload`.** It's the payload *of* a command or event, not the
+  command/event itself, so no `Command` or `Event` suffix. Let the verb
+  mood carry the distinction: imperative = command (`SetPropertyPayload`,
+  "set this property"); past tense = event (`PropertySetPayload`, "a
+  property was set" — likewise `AlarmStateChangedPayload`,
+  `ServiceProviderRegistrationDeniedPayload`). `SetPropertyCommand` and
+  `PropertySetEvent` are wrong on both counts: the suffix is redundant,
+  and it breaks the `nameof(T)` schema match above.
 - Pick the direction folder; the folder name is the contract direction
   and consumers grep on it.
 - Implement `IMessage` if the payload is a top-level envelope.
