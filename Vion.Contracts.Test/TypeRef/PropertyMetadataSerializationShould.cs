@@ -151,6 +151,37 @@ namespace Vion.Contracts.Test.TypeRef
         }
 
         [TestMethod]
+        public void RoundtripPresentationVisibleWhen()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                new Presentation { VisibleWhen = "DirectMeasurement == false" },
+                                                RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            var roundtripped = PropertyMetadataSerialization.FromJson(json);
+            Assert.AreEqual("DirectMeasurement == false", roundtripped.Presentation.VisibleWhen);
+        }
+
+        [TestMethod]
+        public void EmitVisibleWhenKeyVerbatim()
+        {
+            // The codec round-trips the predicate as-is — it doesn't parse or validate the dialect.
+            // That lives downstream: the dashboard/DevHost evaluators and the SDK analyzer (docs/predicates.md).
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
+                                                new Presentation { VisibleWhen = "Mode in ['Eco', 'Fast'] && !IsExternallyLocked" },
+                                                RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            Assert.AreEqual("Mode in ['Eco', 'Fast'] && !IsExternallyLocked", json["presentation"]!["visibleWhen"]!.GetValue<string>());
+        }
+
+        [TestMethod]
+        public void OmitVisibleWhenKeyWhenNull()
+        {
+            var metadata = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)), new Presentation { Group = "Power" }, RuntimeMetadata.None);
+            var json = metadata.ToJson();
+            Assert.IsFalse(json["presentation"]!.AsObject().ContainsKey("visibleWhen"));
+        }
+
+        [TestMethod]
         public void EmitNonNullRuntimeWhenThrottleIsSetEvenWithoutPersistent()
         {
             var meta = new PropertyMetadata(TypeSchema.Of(new PrimitiveTypeRef(PrimitiveKind.Double)),
