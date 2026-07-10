@@ -60,11 +60,13 @@ namespace Vion.Contracts.Events.MeshToCloud
 
         ServiceProviderRestarted,
 
-        // Audit trail for mesh starting / stopping a base-image system service
-        // (remote-access, etc.). Appended (never reordered) — the enum is wire.
         SystemServiceStarted,
 
         SystemServiceStopped,
+
+        MeshRestarted,
+
+        BrokerRestarted,
     }
 
     public enum SystemEventSource
@@ -82,6 +84,8 @@ namespace Vion.Contracts.Events.MeshToCloud
         ServiceProvider,
 
         SystemService,
+
+        SystemControl,
     }
 
     public enum SystemEventStatus
