@@ -79,6 +79,11 @@ namespace Vion.Contracts.TypeRef
                 o["format"] = p.Format;
             }
 
+            if (p.VisibleWhen is not null)
+            {
+                o["visibleWhen"] = p.VisibleWhen;
+            }
+
             if (p.StatusMappings is { Count: > 0 } sm)
             {
                 var smObj = new JsonObject();
@@ -116,6 +121,7 @@ namespace Vion.Contracts.TypeRef
                        UIHint = o["uiHint"]?.GetValue<string>(),
                        Decimals = o["decimals"]?.GetValue<int>(),
                        Format = o["format"]?.GetValue<string>(),
+                       VisibleWhen = o["visibleWhen"]?.GetValue<string>(),
                        StatusMappings = o["statusMappings"] is JsonObject sm ? sm.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
                        EnumLabels = o["enumLabels"] is JsonObject el ? el.ToImmutableDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>()) : null,
                    };
