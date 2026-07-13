@@ -59,7 +59,10 @@ namespace Vion.Contracts.Introspection
             ///     MatchingRoleDefaultName. A non-default consumer-side link multiplicity additionally adds the
             ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.MultiplicityAnnotationKey" />
             ///     key, valued with one of the
-            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings.
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings. A config-time
+            ///     inclusion gate (RFC 0016) adds the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.IncludedWhenAnnotationKey" />
+            ///     key, valued with the <c>[IncludedWhen]</c> predicate string.
             /// </summary>
             public Dictionary<string, object> Annotations { get; set; } = [];
         }
@@ -88,7 +91,10 @@ namespace Vion.Contracts.Introspection
             ///     key; a provider-side consumer cap adds the
             ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.ConsumersAnnotationKey" />
             ///     key — each valued with one of the
-            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings.
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions" /> token strings. A config-time
+            ///     inclusion gate (RFC 0016) adds the
+            ///     <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.IncludedWhenAnnotationKey" />
+            ///     key, valued with the <c>[IncludedWhen]</c> predicate string.
             /// </summary>
             public Dictionary<string, object> Annotations { get; set; } = [];
         }
@@ -99,6 +105,19 @@ namespace Vion.Contracts.Introspection
             ///     The identifier of the Service, e.g. "default", "circuit1"
             /// </summary>
             public string Identifier { get; set; } = null!;
+
+            /// <summary>
+            ///     Config-time inclusion gate (RFC 0016 / config-time structural gating): the
+            ///     <c>[IncludedWhen]</c> predicate string when this service is gated, otherwise <c>null</c>
+            ///     (unconditional). A typed field rather than an annotation-bag key because services have no
+            ///     <c>Annotations</c> bag; the sibling interface/contract bindings carry the same predicate under
+            ///     the <see cref="Vion.Contracts.Conventions.LogicBlockWiringConventions.IncludedWhenAnnotationKey" />
+            ///     annotation key. The predicate uses the shared dialect
+            ///     (<c>docs/predicates.md</c>) and is evaluated strict/fail-closed by
+            ///     <see cref="Vion.Contracts.Predicates.Predicate" />. Additive: absent on ungated services and on
+            ///     definitions produced before the feature shipped.
+            /// </summary>
+            public string? IncludedWhen { get; set; }
 
             /// <summary>
             ///     Implemented interface types.

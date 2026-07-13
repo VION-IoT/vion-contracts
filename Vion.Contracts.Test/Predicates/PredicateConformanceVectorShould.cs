@@ -27,7 +27,7 @@ namespace Vion.Contracts.Test.Predicates
         }
 
         [TestMethod]
-        public void GiveEveryEvalCaseNamePredicateValuesAndBooleanExpected()
+        public void GiveEveryEvalCaseNamePredicateValuesAndAnOutcome()
         {
             foreach (var node in LoadVectorRoot()["eval"]!.AsArray())
             {
@@ -36,9 +36,20 @@ namespace Vion.Contracts.Test.Predicates
                 Assert.IsFalse(string.IsNullOrWhiteSpace(c["predicate"]?.GetValue<string>()), $"eval case '{c["name"]}' is missing 'predicate'");
                 Assert.IsInstanceOfType<JsonObject>(c["values"], $"eval case '{c["name"]}' is missing a 'values' object");
 
-                // 'expected' is the boolean the predicate yields (the consumer truthiness-tests it into
-                // visible/hidden). GetValue<bool> throws if it is absent or not a JSON boolean.
-                _ = c["expected"]!.GetValue<bool>();
+                // Outcome is either a boolean 'expected' (the consumer truthiness-tests it into visible/hidden,
+                // or — strict profile — takes it as the resolved gate) OR "error": true for a strict
+                // fail-closed case, which carries no 'expected'. Exactly one must be present.
+                var isError = c["error"] is not null && c["error"]!.GetValue<bool>();
+                if (isError)
+                {
+                    Assert.IsNull(c["expected"], $"error case '{c["name"]}' must not also carry 'expected'");
+                    Assert.AreEqual("strict", c["profile"]?.GetValue<string>(), $"error case '{c["name"]}' is strict-profile only");
+                }
+                else
+                {
+                    // GetValue<bool> throws if 'expected' is absent or not a JSON boolean.
+                    _ = c["expected"]!.GetValue<bool>();
+                }
             }
         }
 
@@ -68,25 +79,27 @@ namespace Vion.Contracts.Test.Predicates
         }
 
         [TestMethod]
-        public void TagNullTouchingEvalCasesWithTheUiProfile()
+        public void TagEveryNullTouchingAndNonCoreEvalCaseWithARecognizedProfile()
         {
             foreach (var node in LoadVectorRoot()["eval"]!.AsArray())
             {
                 var c = node!.AsObject();
                 var profile = c["profile"]?.GetValue<string>();
 
-                // A case whose context binds a ref to JSON null exercises UI-profile-only semantics
-                // (RFC 0016's strict profile never faces null by construction) — §2.4 requires the tag.
+                // A case whose context binds a ref to JSON null is profile-specific: the UI profile treats
+                // null as a participating value (fail-open), the strict profile treats it as a hard error
+                // (fail-closed). Either way it is never a core (untagged) case — a core case binds every
+                // evaluator, and the two profiles disagree on null.
                 var touchesNull = c["values"]!.AsObject().Any(kv => kv.Value is null);
                 if (touchesNull)
                 {
-                    Assert.AreEqual("ui", profile, $"eval case '{c["name"]}' binds a null value and must carry \"profile\": \"ui\"");
+                    Assert.IsTrue(profile is "ui" or "strict", $"eval case '{c["name"]}' binds a null value and must carry \"profile\": \"ui\" or \"strict\"");
                 }
 
-                // "ui" is the only profile in the vocabulary; core cases are left untagged.
+                // "ui" and "strict" are the only profiles in the vocabulary; core cases are left untagged.
                 if (profile is not null)
                 {
-                    Assert.AreEqual("ui", profile, $"eval case '{c["name"]}' has an unrecognized profile '{profile}'");
+                    Assert.IsTrue(profile is "ui" or "strict", $"eval case '{c["name"]}' has an unrecognized profile '{profile}'");
                 }
             }
         }
