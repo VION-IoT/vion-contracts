@@ -7,15 +7,20 @@ widget-expression language** (a [jsep](https://github.com/EricSmekens/jsep)-base
 so authors write one syntax across custom widgets and visibility predicates.
 
 This document and the sibling [`Vion.Contracts/Predicates/predicate-conformance.json`](../Vion.Contracts/Predicates/predicate-conformance.json)
-vector are the single source of truth. dale-sdk RFC 0016 (`[ExistsWhen]`, config-time
+vector are the single source of truth. dale-sdk RFC 0016 (`[IncludedWhen]`, config-time
 structural gating) reuses this exact grammar, semantics, and vector.
 
-> **`Vion.Contracts` transports the predicate; it never evaluates it.** There is no C#
-> evaluator in this package. The evaluators live downstream and all conform to the vector:
-> the dashboard's jsep-subset compiler (parse + eval), the dale-sdk DevHost plain-JS
-> evaluator (eval), and the dale-sdk analyzer's recursive-descent parser (parse and
-> type-check only — it never evaluates). RFC 0016 adds the first C# runtime evaluator later,
-> against the same vector.
+> **`Vion.Contracts` transports the predicate — and, since RFC 0016, evaluates it under the
+> strict profile.** [`Vion.Contracts/Predicates/Predicate.cs`](../Vion.Contracts/Predicates/Predicate.cs)
+> is a reflection-free/AOT-safe parser + strict evaluator (`Predicate.Parse(string)` →
+> `Evaluate(IReadOnlyDictionary<string, JsonNode?>)`), consumed by the dale-sdk Live-mode
+> binders and cloud-api's activation/projection to resolve config-time inclusion gates. It
+> joins the other conformant implementations: the dashboard's jsep-subset compiler (parse +
+> eval, UI profile), the dale-sdk DevHost plain-JS evaluator (eval, UI profile), and the
+> dale-sdk analyzer's recursive-descent parser (parse + type-check only — the Generators
+> assembly is netstandard2.0 and cannot reference this package, so it stays a second, vector-
+> pinned C# parser). This supersedes the earlier "this package never evaluates" posture
+> (deliberate, per the RFC 0016 spec §3).
 
 ## Grammar (v1)
 
@@ -114,35 +119,75 @@ languages must reproduce the vector's results, loose-equality `null` cases inclu
 
 ### Two evaluation profiles, one dialect
 
-The fail-open ladder and the `null`-participates rule above are the **UI profile** — the one
-this release ships. Live UI values can legitimately be absent, so the UI evaluators
-(dashboard, DevHost) fail open and treat `null` as a real, participating value.
+The fail-open ladder and the `null`-participates rule above are the **UI profile**. Live UI
+values can legitimately be absent, so the UI evaluators (dashboard, DevHost) fail open and
+treat `null` as a real, participating value.
 
-A future **strict profile** (dale-sdk RFC 0016's `[ExistsWhen]` C# evaluator) shares this
-exact grammar but never faces an absent value: its references are present and typed by
-construction, a missing/`null` reference is a hard configuration error (**fail-closed** — an
-existence gate must be deterministic), and the result is a real boolean with no truthiness
-coercion. Both profiles agree on every same-typed, non-null comparison, which is where C#
-`==` and JS `==` coincide exactly.
+The **strict profile** (RFC 0016's `[IncludedWhen]` inclusion gate, implemented by
+[`Predicate`](../Vion.Contracts/Predicates/Predicate.cs)) shares this exact grammar but never
+faces an absent value: its references are present and typed by construction, a missing/`null`
+reference is a hard configuration error (**fail-closed** — an inclusion gate must be
+deterministic), and the result is a real boolean with no truthiness coercion. Both profiles
+agree on every same-typed, non-null comparison, which is where C# `==` and JS `==` coincide
+exactly.
 
 The conformance vector encodes the split: eval cases that exercise `null`/`undefined` carry
-`"profile": "ui"`; **untagged eval cases are core** and bind *every* evaluator, including the
-future strict C# one.
+`"profile": "ui"` (or `"strict"` for the fail-closed counterpart); **untagged eval cases are
+core** and bind *every* evaluator, the strict C# one included.
+
+#### The strict profile (RFC 0016 inclusion gates)
+
+The strict evaluator resolves whether a gated member is part of a configured instance. It
+narrows the dialect in exactly one place — **reference scope** — and hardens the failure
+mode; nothing else about the grammar or type discipline changes.
+
+- **Reference scope.** In an `[IncludedWhen]` gate a reference is a **bare, single-segment
+  ref to an `[InstantiationParameter]` scalar of the same block** — the operator-chosen,
+  config-time properties (`bool` / `enum` / integer / `string`, the discrete-scalar set the
+  [Type discipline](#type-discipline-checked-at-compile-time-by-the-sdk-analyzer) section
+  allows). This is *narrower* than the
+  UI profile's addressing (which permits qualified `Service.Property` refs to any sibling
+  service property). The dale-sdk analyzer (DALE043) rejects a qualified ref or a ref that
+  does not resolve to an `[InstantiationParameter]`, so a strict-profile evaluator never has
+  to police scope — it evaluates whatever context it is handed. The evaluator itself imposes
+  no scope rule: its context is a flat map keyed by each ref's full text (a bare `Property`,
+  or a two-segment `Service.Property` for the shared core cases), so the same evaluator also
+  serves the broader keys the core vector uses.
+- **Context shape.** The context is `IReadOnlyDictionary<string, JsonNode?>` keyed by ref
+  text; each value is a JSON scalar in the wire form — an **enum as its member-name string**,
+  an **integer as a JSON number**, plus `bool` and `string` — produced by
+  `PropertyValueCodec.ClrToJson`. (Constructing the context with raw `(int)` casts or
+  `ToString()` instead of the codec is the classic context bug; it lives in construction, not
+  in the evaluator, so the shared vector cannot catch it — cover it with a consumer-side
+  test.)
+- **Fail-closed rules.** `Evaluate` throws `PredicateEvaluationException` when a referenced
+  value is **missing** (absent key), **`null`**, or of a **JSON kind that does not match the
+  compared literal** (e.g. an integer gate over a string value). An unparseable predicate
+  throws `PredicateSyntaxException` from `Parse`. A consumer treats either as a hard
+  configuration error — skip-the-member / fail-activation — never as a silently "included"
+  member.
 
 ## Conformance vector
 
 [`Vion.Contracts/Predicates/predicate-conformance.json`](../Vion.Contracts/Predicates/predicate-conformance.json)
 is the cross-implementation drift guard. It holds two case lists:
 
-- **`eval`** — `{ name, predicate, values, expected, profile? }`. `values` is keyed by ref
-  string; each consumer maps it onto its own context shape. `expected` is the boolean the
-  predicate evaluates to (which the consumer then truthiness-tests into visible / hidden). A
-  case that exercises `null` / `undefined` carries `"profile": "ui"` and binds only the
-  UI-profile evaluators (dashboard, DevHost); an untagged case is **core** and binds every
-  evaluator, including RFC 0016's future C# one.
+- **`eval`** — `{ name, predicate, values, expected, profile?, error? }`. `values` is keyed
+  by ref string; each consumer maps it onto its own context shape. Outcome is one of:
+  - **`expected`** — the boolean the predicate evaluates to (which a UI consumer then
+    truthiness-tests into visible / hidden, and a strict consumer takes as the resolved gate).
+  - **`"error": true`** — a **strict-profile fail-closed** case: the strict evaluator must
+    throw rather than return a boolean (missing ref, `null` value, or type mismatch). It
+    carries no `expected` and always `"profile": "strict"`. UI evaluators do not run it.
+
+  Profiles: a case that exercises `null` / `undefined` carries `"profile": "ui"` (fail-open,
+  binds the dashboard + DevHost) or `"profile": "strict"` (fail-closed, binds
+  [`Predicate`](../Vion.Contracts/Predicates/Predicate.cs)); a `"profile": "strict"` positive
+  case is one whose parameter-shaped values only the strict evaluator is asked to run. An
+  **untagged** case is **core** and binds *every* evaluator, the strict C# one included.
 - **`parse`** — `{ name, predicate, valid, reason? }`. Asserts whether a string is inside
-  the grammar subset above. Every consumer runs these, including the parse-only SDK
-  analyzer.
+  the grammar subset above. Every consumer runs these, including the parse-only SDK analyzer
+  and this package's own `Predicate.TryParse`.
 
 The file is plain JSON (no comments), so `JSON.parse` and `System.Text.Json` both read it
 directly. Consumers **vendor** a copy with a provenance header (source repo + SHA); the

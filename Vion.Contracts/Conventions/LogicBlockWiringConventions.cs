@@ -32,6 +32,20 @@ namespace Vion.Contracts.Conventions
         /// </summary>
         public const string ConsumersAnnotationKey = "Consumers";
 
+        /// <summary>
+        ///     Config-time inclusion-gate annotation key (RFC 0016 / config-time
+        ///     structural gating). Present in
+        ///     <c>LogicBlockIntrospectionResult.InterfaceInfo.Annotations</c> /
+        ///     <c>ContractInfo.Annotations</c> when the binding carries an
+        ///     <c>[IncludedWhen]</c> gate; the value is the predicate string in the
+        ///     shared dialect (<c>docs/predicates.md</c>), evaluated strict/fail-closed
+        ///     by <see cref="Vion.Contracts.Predicates.Predicate" />. Services carry the
+        ///     same predicate on the typed
+        ///     <see cref="Vion.Contracts.Introspection.LogicBlockIntrospectionResult.ServiceInfo.IncludedWhen" />
+        ///     field instead (services have no annotation bag).
+        /// </summary>
+        public const string IncludedWhenAnnotationKey = "IncludedWhen";
+
         /// <summary>Token for <c>LinkMultiplicity.ExactlyOne</c> (required, single).</summary>
         public const string ExactlyOne = "ExactlyOne";
 
