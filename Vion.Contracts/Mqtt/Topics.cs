@@ -61,6 +61,9 @@ namespace Vion.Contracts.Mqtt
         public const string LogicConfigurationGet = "/cloud/system/logicConfiguration/get";
 
         // Cloud -> Mesh
+        public const string LogicConfigurationRetrieved = "/cloud/system/logicConfiguration/retrieved";
+
+        // Cloud -> Mesh
         public const string RestartCloud = "/cloud/system/restart";
 
         // Cloud -> Mesh

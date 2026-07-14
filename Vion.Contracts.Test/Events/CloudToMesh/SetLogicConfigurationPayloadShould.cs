@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -30,9 +29,31 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         }
 
         [TestMethod]
+        public void CarryTheSharedLogicConfigurationBodyFlatOnTheWire()
+        {
+            // The shared body is inherited, not nested, so fields stay top-level — no "config" wrapper.
+            var payload = MinimalPayload(new LogicConfiguration.LogicBlockInstance
+                                         {
+                                             Id = "b1",
+                                             PackageId = "pkg",
+                                             PackageVersion = "4.0.0",
+                                             TypeFullName = "Ns.X",
+                                             Name = "n",
+                                             Services = [],
+                                         });
+
+            Assert.IsInstanceOfType<LogicConfiguration>(payload, "the payload must inherit the shared body");
+
+            var json = JsonNode.Parse(JsonSerializer.Serialize(payload, WireOptions))!.AsObject();
+
+            Assert.IsTrue(json.ContainsKey("logicBlockInstances"), "the shared body's fields stay top-level (flattened)");
+            Assert.IsFalse(json.ContainsKey("config"), "the body is inherited, not nested under a 'config' wrapper");
+        }
+
+        [TestMethod]
         public void RoundTripInstantiationParameterValuesAsAList()
         {
-            var payload = MinimalPayload(new SetLogicConfigurationPayload.LogicBlockInstance
+            var payload = MinimalPayload(new LogicConfiguration.LogicBlockInstance
                                          {
                                              Id = "b1",
                                              PackageId = "pkg",
@@ -42,9 +63,9 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
                                              Services = [],
                                              InstantiationParameterValues =
                                              [
-                                                 new SetLogicConfigurationPayload.InstantiationParameterValue
+                                                 new LogicConfiguration.InstantiationParameterValue
                                                  { Identifier = "ChargePointCount", Value = JsonValue.Create(3) },
-                                                 new SetLogicConfigurationPayload.InstantiationParameterValue
+                                                 new LogicConfiguration.InstantiationParameterValue
                                                  { Identifier = "Model", Value = JsonValue.Create("Cappuccino") },
                                              ],
                                          });
@@ -62,7 +83,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
         {
             // The reason for the list shape: the identifier sits in a VALUE position, so the camelCase
             // DictionaryKeyPolicy never touches it. "ChargePointCount" must survive verbatim.
-            var payload = MinimalPayload(new SetLogicConfigurationPayload.LogicBlockInstance
+            var payload = MinimalPayload(new LogicConfiguration.LogicBlockInstance
                                          {
                                              Id = "b1",
                                              PackageId = "pkg",
@@ -72,7 +93,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
                                              Services = [],
                                              InstantiationParameterValues =
                                              [
-                                                 new SetLogicConfigurationPayload.InstantiationParameterValue
+                                                 new LogicConfiguration.InstantiationParameterValue
                                                  { Identifier = "ChargePointCount", Value = JsonValue.Create(3) },
                                              ],
                                          });
@@ -98,7 +119,7 @@ namespace Vion.Contracts.Test.Events.CloudToMesh
             Assert.IsNull(payload.LogicBlockInstances.Single().InstantiationParameterValues);
         }
 
-        private static SetLogicConfigurationPayload MinimalPayload(SetLogicConfigurationPayload.LogicBlockInstance instance)
+        private static SetLogicConfigurationPayload MinimalPayload(LogicConfiguration.LogicBlockInstance instance)
         {
             return new SetLogicConfigurationPayload
                    {

@@ -47,5 +47,10 @@
         {
             public const string Name = "sync_status_id";
         }
+
+        public static class LogicConfigurationContentHash
+        {
+            public const string Name = "logic_config_content_hash";
+        }
     }
 }
