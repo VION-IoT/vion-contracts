@@ -67,6 +67,8 @@ namespace Vion.Contracts.Events.MeshToCloud
         MeshRestarted,
 
         BrokerRestarted,
+
+        LogicConfigurationApplied,
     }
 
     public enum SystemEventSource
@@ -86,6 +88,8 @@ namespace Vion.Contracts.Events.MeshToCloud
         SystemService,
 
         SystemControl,
+
+        LogicConfiguration,
     }
 
     public enum SystemEventStatus
