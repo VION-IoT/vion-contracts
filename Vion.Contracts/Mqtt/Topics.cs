@@ -21,9 +21,6 @@ namespace Vion.Contracts.Mqtt
         // Cloud -> Mesh
         public const string PropertySetCloud = "/cloud/sw/property/set";
 
-        // Mesh -> Cloud
-        public const string PropertySetResponseCloud = "/cloud/sw/property/set/response";
-
         // Broker -> Mesh
         public const string SubscriberLastWill = "cloud/subscriber/lastWill";
 
@@ -53,9 +50,6 @@ namespace Vion.Contracts.Mqtt
 
         // Cloud -> Mesh
         public const string LogicConfigurationSetCloud = "/cloud/system/logicConfiguration/set";
-
-        // Mesh -> Cloud
-        public const string LogicConfigurationSetResponse = "/cloud/system/logicConfiguration/set/response";
 
         // Mesh -> Cloud
         public const string LogicConfigurationGet = "/cloud/system/logicConfiguration/get";
@@ -146,17 +140,6 @@ namespace Vion.Contracts.Mqtt
 
         // Mesh -> Dale
         public const string PropertySet = Property + "/set";
-
-        // Dale -> Mesh
-        /// <summary>
-        ///     Dale never receives messages on this topic. It exists solely to distinguish between synchronous and asynchronous
-        ///     property set operations in Mesh.
-        ///     In synchronous requests, Mesh waits for a response on the <see cref="PropertySet" /> topic, whereas in asynchronous
-        ///     requests,
-        ///     Mesh publishes the message and specifies this topic as the response topic without waiting for a reply.
-        ///     A separate message handler is responsible for subscribing to this topic.
-        /// </summary>
-        public const string PropertyAsyncSet = Property + "/async/set";
 
         // Dale -> Mesh
         public const string PropertyState = Property + "/state";
