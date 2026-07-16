@@ -171,6 +171,9 @@ namespace Vion.Contracts.Mqtt
         // Mesh -> Dale
         public const string LogicConfigurationSet = LogicConfiguration + "/set";
 
+        // Dale -> Mesh
+        public const string LogicConfigurationLoadFailed = LogicConfiguration + "/loadFailed";
+
         #endregion
 
         #region Hal - Dale
