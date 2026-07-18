@@ -25,13 +25,15 @@ namespace Vion.Contracts.Test.Events.ServiceProviderToMesh
         }
 
         [TestMethod]
-        public void RoundtripTheFailureReason()
+        [DataRow(LogicConfigurationLoadFailureReason.CorruptConfig)]
+        [DataRow(LogicConfigurationLoadFailureReason.MissingConfig)]
+        public void RoundtripTheFailureReason(LogicConfigurationLoadFailureReason reason)
         {
-            var payload = new LogicConfigurationLoadFailedPayload(LogicConfigurationLoadFailureReason.CorruptConfig);
+            var payload = new LogicConfigurationLoadFailedPayload(reason);
 
             var roundtripped = JsonSerializer.Deserialize<LogicConfigurationLoadFailedPayload>(JsonSerializer.Serialize(payload, WireOptions), WireOptions)!;
 
-            Assert.AreEqual(LogicConfigurationLoadFailureReason.CorruptConfig, roundtripped.Reason);
+            Assert.AreEqual(reason, roundtripped.Reason);
         }
     }
 }

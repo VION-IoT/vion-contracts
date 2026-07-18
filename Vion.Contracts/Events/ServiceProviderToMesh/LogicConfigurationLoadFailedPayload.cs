@@ -12,6 +12,14 @@ namespace Vion.Contracts.Events.ServiceProviderToMesh
     /// </summary>
     public enum LogicConfigurationLoadFailureReason
     {
+        /// <summary>
+        ///     The persisted configuration file is present but could not be parsed.
+        /// </summary>
         CorruptConfig,
+
+        /// <summary>
+        ///     No persisted configuration file exists, so the service provider has no configuration to run.
+        /// </summary>
+        MissingConfig,
     }
 }
