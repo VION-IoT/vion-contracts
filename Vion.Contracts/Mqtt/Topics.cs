@@ -85,6 +85,9 @@ namespace Vion.Contracts.Mqtt
         public const string SystemHealthState = "/cloud/system/health/state";
 
         // Mesh -> Cloud
+        public const string CertificateState = "/cloud/system/certificate/state";
+
+        // Mesh -> Cloud
         public const string SyncStatus = "/cloud/system/syncStatus/state";
 
         // Mesh -> Cloud
