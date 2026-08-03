@@ -81,7 +81,7 @@ namespace Vion.Contracts.Events.MeshToCloud
 
         Schedule,
 
-        DiskSpaceMonitorService,
+        DiskSpaceMonitor,
 
         ServiceProvider,
 

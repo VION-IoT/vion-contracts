@@ -17,7 +17,7 @@ namespace Vion.Contracts.Events.MeshToCloud
     /// </summary>
     /// <param name="Name">
     ///     The name of the component (e.g., "mesh", "dale", "hal", "nanomq", "otel-collector") or subcomponent (e.g.,
-    ///     "DiskSpaceMonitorService", "AutomationService").
+    ///     "DiskSpaceMonitor", "AutomationService").
     /// </param>
     /// <param name="ConnectionStatus">
     ///     The connection status of the component. The meaning varies by component type, for example:
@@ -54,7 +54,7 @@ namespace Vion.Contracts.Events.MeshToCloud
     /// </param>
     /// <param name="SubComponents">
     ///     Optional list of subcomponents or internal services. For example, Mesh may have subcomponents like
-    ///     DiskSpaceMonitorService, AutomationService, or MessagePublisherService that can individually be healthy or
+    ///     DiskSpaceMonitor, AutomationService, or MessagePublisherService that can individually be healthy or
     ///     unhealthy.
     ///     If any subcomponent is unhealthy, the parent component should also be marked as unhealthy.
     /// </param>
