@@ -4,7 +4,7 @@
     {
         public const string Mesh = "mesh";
 
-        public const string NanoMq = "nanomq";
+        public const string FlashMq = "flashmq";
 
         public const string OtelCollector = "otel-collector";
     }

@@ -7,7 +7,7 @@ namespace Vion.Contracts.Events.MeshToCloud
     ///     Represents the health status of all edge device components as reported by Mesh to the cloud.
     /// </summary>
     /// <param name="Components">
-    ///     The list of components being monitored e.g. Mesh, Dale, Hal, NanoMq, Otel-Collector.
+    ///     The list of components being monitored e.g. Mesh, Dale, Hal, FlashMq, Otel-Collector.
     /// </param>
     [Schema("SystemHealthStatusPayload")]
     public record SystemHealthStatusPayload(List<Component> Components) : IMessage;
@@ -16,20 +16,20 @@ namespace Vion.Contracts.Events.MeshToCloud
     ///     Represents the status of a single component or subcomponent.
     /// </summary>
     /// <param name="Name">
-    ///     The name of the component (e.g., "mesh", "dale", "hal", "nanomq", "otel-collector") or subcomponent (e.g.,
+    ///     The name of the component (e.g., "mesh", "dale", "hal", "flashmq", "otel-collector") or subcomponent (e.g.,
     ///     "DiskSpaceMonitor", "AutomationService").
     /// </param>
     /// <param name="ConnectionStatus">
     ///     The connection status of the component. The meaning varies by component type, for example:
     ///     <list type="bullet">
     ///         <item>For Mesh, Dale, and Hal: whether they are connected to the MQTT broker.</item>
-    ///         <item>For NanoMq: whether the broker is reachable.</item>
+    ///         <item>For FlashMq: whether the broker is reachable.</item>
     ///         <item>For internal Mesh services: whether the service is running.</item>
     ///     </list>
     ///     When a component is <see cref="MeshToCloud.ConnectionStatus.Offline" />, its <see cref="HealthStatus" /> becomes
     ///     <see cref="MeshToCloud.HealthStatus.Unknown" />
     ///     because the component could still be functioning correctly but unable to communicate (e.g., Dale is executing
-    ///     correctly but NanoMq is down).
+    ///     correctly but FlashMq is down).
     /// </param>
     /// <param name="HealthStatus">
     ///     The health status of the component. This is <see cref="MeshToCloud.HealthStatus.Unknown" /> when:
