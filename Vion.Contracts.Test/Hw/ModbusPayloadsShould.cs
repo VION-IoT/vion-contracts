@@ -82,6 +82,19 @@ namespace Vion.Contracts.Test.Hw
         }
 
         [TestMethod]
+        public void RejectMalformedDataAsAJsonExceptionNotATypeSpecificOne()
+        {
+            // The producer on the other end of this contract hand-writes its JSON in Structured Text, so malformed
+            // data is a live failure mode. It has to surface as JsonException — that is what a consumer wraps a
+            // deserialise call in; anything else escapes the handler.
+            const string notBase64 = "{\"responseCode\":\"Ok\",\"errorMessage\":null,\"data\":\"not base64!\"}";
+            const string notAString = "{\"responseCode\":\"Ok\",\"errorMessage\":null,\"data\":[0,42]}";
+
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<GetModbusResponsePayload>(notBase64, WireOptions));
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<GetModbusResponsePayload>(notAString, WireOptions));
+        }
+
+        [TestMethod]
         public void RoundtripBothByteVectors()
         {
             var request = new SetModbusPayload(ModbusFunctionCode.WriteMultipleRegisters, 7, 4096, [0x01, 0x02, 0x03, 0x04]);
