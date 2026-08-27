@@ -52,7 +52,8 @@ sparingly and locally, never to opt a whole file out.
 |------|-------|
 | `Vion.Contracts/Mqtt/` | Topic constants, user-property names, MIME types |
 | `Vion.Contracts/Events/` | JSON payload classes per direction (CloudToMesh, MeshToCloud, MeshToServiceProvider, ServiceProviderToMesh) |
-| `Vion.Contracts/FlatBuffers/` | `.fbs` schemas (Common, Hw, Sw, Remote, System) |
+| `Vion.Contracts/Hw/` | JSON payload classes for the SP↔dale hardware contracts (Ai, Ao, Di, Do, Modbus) |
+| `Vion.Contracts/FlatBuffers/` | `.fbs` schemas (Common, Sw, Remote, System) |
 | `Vion.Contracts/FlatBuffers.Generated/` | Generated C# from `.fbs` — **regenerated**, see below |
 | `Vion.Contracts/Codec/` | `PropertyValue` encode / decode + JSON-Schema validation |
 | `Vion.Contracts/TypeRef/` | Type-reference / property-metadata models |
@@ -86,7 +87,26 @@ sparingly and locally, never to opt a whole file out.
   and consumers grep on it.
 - Implement `IMessage` if the payload is a top-level envelope.
 
-**FlatBuffers schemas** (in `FlatBuffers/<Area>/`):
+**Hardware payloads** (in `Hw/<Area>/`, namespace `Vion.Contracts.Hw.<Area>`):
+
+- These are SP↔dale traffic on the **local** broker; they never reach mesh, which is
+  why they sit outside `Events/<Direction>/` — every direction folder there names a
+  mesh direction.
+- **No `[Schema]`, no `IMessage`.** Both exist so mesh can validate an inbound
+  message by comparing `nameof(T)` against the `schema` user-property; mesh never
+  sees this traffic, and dale-sdk dispatches these payloads by **topic**
+  (`ServiceProviderHandlerBase.GetMqttRegistration`), never by the attribute.
+  Producers pass `nameof(T)` as the `schema` user-property, so the type name *is*
+  the schema string — an attribute repeating it would be a second, unread source of
+  truth that can drift.
+- **Identity lives in the topic**, not the payload. A state payload is `{"value":…}`
+  and nothing more.
+- Content type is `MessageMimeTypes.Json`.
+- The wire shape is pinned by tests in `Vion.Contracts.Test/Hw/` — exact JSON per
+  payload. There is no CI schema-diff check, so these tests are the only guard.
+
+**FlatBuffers schemas** (in `FlatBuffers/<Area>/`) — `Remote` (dale↔dale) plus
+`Common` / `Sw` / `System`:
 
 - Edit / add the `.fbs` file. Add new fields **at the end** — field IDs
   are positional unless you use explicit `id:` tags.
