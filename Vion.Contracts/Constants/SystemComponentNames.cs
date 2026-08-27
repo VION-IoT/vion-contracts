@@ -4,7 +4,7 @@
     {
         public const string Mesh = "mesh";
 
-        public const string FlashMq = "flashmq";
+        public const string Broker = "broker";
 
         public const string OtelCollector = "otel-collector";
     }

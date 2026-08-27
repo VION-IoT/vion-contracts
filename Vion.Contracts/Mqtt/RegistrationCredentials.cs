@@ -2,7 +2,7 @@ namespace Vion.Contracts.Mqtt
 {
     /// <summary>
     ///     Public, ACL-limited bootstrap identity every service provider uses for the
-    ///     pre-registration handshake. NOT a secret — FlashMQ restricts this user to the
+    ///     pre-registration handshake. NOT a secret — the broker's ACL restricts this user to the
     ///     registration topics only.
     /// </summary>
     public readonly record struct RegistrationCredentials(string Username, string Password)
