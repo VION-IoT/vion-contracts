@@ -37,9 +37,11 @@ namespace Vion.Contracts.Test.Constants
         {
             const string relayEndpoint = RemoteAccessConstants.Arguments.RelayEndpoint;
             const string relaySessionToken = RemoteAccessConstants.Arguments.RelaySessionToken;
+            const string relayHostKey = RemoteAccessConstants.Arguments.RelayHostKey;
 
             Assert.AreEqual("relayEndpoint", string.Concat(relayEndpoint));
             Assert.AreEqual("relaySessionToken", string.Concat(relaySessionToken));
+            Assert.AreEqual("relayHostKey", string.Concat(relayHostKey));
         }
 
         [TestMethod]
