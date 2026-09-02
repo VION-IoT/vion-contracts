@@ -63,6 +63,15 @@ namespace Vion.Contracts.Constants
             ///     gateway leg to the relay; scoped to the one session.
             /// </summary>
             public const string RelaySessionToken = "relaySessionToken";
+
+            /// <summary>
+            ///     <see cref="Services.RemoteConsole" /> only — the relay's host public key in OpenSSH format (one
+            ///     <c>known_hosts</c>-style line), which cloud-api reads from the relay's registration API. The
+            ///     gateway pins it in a session-scoped <c>known_hosts</c>, so the dial-out authenticates the relay
+            ///     instead of trusting it on first use. Session-scoped like <see cref="RelaySessionToken" />, but a
+            ///     public key — not a secret.
+            /// </summary>
+            public const string RelayHostKey = "relayHostKey";
         }
     }
 }
