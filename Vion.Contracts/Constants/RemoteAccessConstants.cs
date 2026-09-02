@@ -59,8 +59,10 @@ namespace Vion.Contracts.Constants
             public const string RelayEndpoint = "relayEndpoint";
 
             /// <summary>
-            ///     <see cref="Services.RemoteConsole" /> only — single-use, TTL-bound token authenticating that
-            ///     gateway leg to the relay; scoped to the one session.
+            ///     <see cref="Services.RemoteConsole" /> only — TTL-bound token authenticating that gateway leg to
+            ///     the relay. Not single-use, unlike <see cref="EphemeralAuthKey" />: it is single-occupancy per
+            ///     relay leg for the session's lifetime — a second concurrent connection on the same leg is
+            ///     refused, while reconnects (autossh keepalive drops) are accepted until expiry or teardown.
             /// </summary>
             public const string RelaySessionToken = "relaySessionToken";
         }
