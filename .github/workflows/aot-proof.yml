@@ -1,0 +1,55 @@
+name: NativeAOT proof
+# Publishes Vion.Contracts.AotProof with NativeAOT and runs the produced binary, proving that
+# Vion.Contracts.Hw.HwJsonContext is usable from the NativeAOT hardware-abstraction layers that
+# consume these contracts. See Vion.Contracts.AotProof/Vion.Contracts.AotProof.csproj.
+#
+# This is deliberately a separate workflow from publish.yml: the pack/test/style gate lives in the
+# shared VION-IoT/shared-workflows publish-nuget.yml and cannot host a RID-specific publish step.
+# It runs on Linux because NativeAOT needs a platform linker, and the ubuntu runner ships clang —
+# a Windows runner would need the Visual Studio C++ workload.
+#
+# The proof is both halves, and each has its own step below:
+#   1. the publish reports no IL2026 / IL3050, and
+#   2. the published native binary exits 0.
+# A JIT unit test proves neither: the non-generic JsonStringEnumConverter passes JIT happily and
+# only fails once reflection has been trimmed away.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aot-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish the proof with NativeAOT
+        run: |
+          set -o pipefail
+          dotnet publish Vion.Contracts.AotProof -r linux-x64 -c Release --nologo 2>&1 | tee publish.log
+
+      - name: Fail on any AOT or trim diagnostic
+        # Grep rather than TreatWarningsAsErrors: IL2026/IL3050 are what the proof is about, and an
+        # unrelated warning from a dependency should not be able to fail it. IL2104/IL3053 are the
+        # per-assembly aggregates — they must be caught too, or a real IL2026 collapsed into one of
+        # them would slip past. TrimmerSingleWarn=false in the csproj keeps them from appearing.
+        run: |
+          if grep -E 'IL2026|IL3050|IL2104|IL3053' publish.log; then
+            echo "::error::NativeAOT publish reported an AOT/trim diagnostic — the Hw contracts are not AOT-safe."
+            exit 1
+          fi
+          echo "No IL2026 / IL3050 reported."
+
+      - name: Run the published native binary
+        run: ./Vion.Contracts.AotProof/bin/Release/net10.0/linux-x64/publish/Vion.Contracts.AotProof

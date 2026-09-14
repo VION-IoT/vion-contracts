@@ -4,10 +4,15 @@ namespace Vion.Contracts.Hw.Modbus
 {
     /// <summary>
     ///     Outcome of a Modbus request. The underlying values are the Modbus exception codes, but the JSON
-    ///     representation is the member <b>name</b> — pinned by the <see cref="JsonStringEnumConverter" /> on the type
-    ///     itself so the wire shape does not depend on the caller's <c>JsonSerializerOptions</c>.
+    ///     representation is the member <b>name</b> — pinned by the <see cref="JsonStringEnumConverter{TEnum}" /> on
+    ///     the type itself so the wire shape does not depend on the caller's <c>JsonSerializerOptions</c>.
+    ///     <para>
+    ///         The converter is the <b>generic</b> one on purpose: the non-generic <c>JsonStringEnumConverter</c> is
+    ///         <c>[RequiresDynamicCode]</c>, so it cannot be used from a source-generated context on a NativeAOT
+    ///         consumer — the generator reports <c>SYSLIB1034</c> and the converter fails at run time once trimmed.
+    ///     </para>
     /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<ModbusResponseCode>))]
     public enum ModbusResponseCode : byte
     {
         /// <summary>The request was successful.</summary>

@@ -22,6 +22,15 @@ dotnet test Vion.Contracts.sln
 
 Targets `netstandard2.1`. Standard .NET tooling — no special harness.
 
+`Vion.Contracts.AotProof` is the third project in the solution: a `net10.0`, non-packable
+console app that round-trips every `Hw/*` payload through `HwJsonContext` and asserts the
+result. `dotnet build` / `dotnet test` cover it like anything else, but the point of it is the
+**published** binary — NativeAOT needs a platform linker, so it can only be published on a
+machine that has one (clang on Linux, the Visual Studio C++ workload on Windows). CI does it
+on Linux: [`.github/workflows/aot-proof.yml`](.github/workflows/aot-proof.yml). A JIT test
+proves nothing here — a reflection-based converter passes JIT happily and only fails once
+trimmed.
+
 ## Code style
 
 Code style is **ReSharper cleanupcode** with the `Custom: Full Cleanup (excl. optimize usings)`
@@ -52,7 +61,7 @@ sparingly and locally, never to opt a whole file out.
 |------|-------|
 | `Vion.Contracts/Mqtt/` | Topic constants, user-property names, MIME types |
 | `Vion.Contracts/Events/` | JSON payload classes per direction (CloudToMesh, MeshToCloud, MeshToServiceProvider, ServiceProviderToMesh) |
-| `Vion.Contracts/Hw/` | JSON payload classes for the SP↔dale hardware contracts (Ai, Ao, Di, Do, Modbus) |
+| `Vion.Contracts/Hw/` | JSON payload classes for the SP↔dale hardware contracts (Ai, Ao, Di, Do, Modbus) + `HwJsonContext` |
 | `Vion.Contracts/FlatBuffers/` | `.fbs` schemas (Common, Sw, Remote, System) |
 | `Vion.Contracts/FlatBuffers.Generated/` | Generated C# from `.fbs` — **regenerated**, see below |
 | `Vion.Contracts/Codec/` | `PropertyValue` encode / decode + JSON-Schema validation |
@@ -102,8 +111,17 @@ sparingly and locally, never to opt a whole file out.
 - **Identity lives in the topic**, not the payload. A state payload is `{"value":…}`
   and nothing more.
 - Content type is `MessageMimeTypes.Json`.
+- **Register every new payload in `Hw/HwJsonContext.cs`.** It is the source-generated
+  `JsonSerializerContext` for this folder, and the only JSON entry point the NativeAOT
+  hardware-abstraction layers can use — an unregistered payload compiles, passes every JIT
+  test, and then throws on the device. Enums used by a payload pin their own representation
+  with `[JsonConverter(typeof(JsonStringEnumConverter<TEnum>))]` on the enum type, which the
+  context inherits; use the **generic** converter, the non-generic one is
+  `[RequiresDynamicCode]` and the generator rejects it with `SYSLIB1034`.
 - The wire shape is pinned by tests in `Vion.Contracts.Test/Hw/` — exact JSON per
-  payload. There is no CI schema-diff check, so these tests are the only guard.
+  payload, through both the context and plain reflection. There is no CI schema-diff check,
+  so these tests are the only guard. AOT-safety is a separate question and a separate proof:
+  `Vion.Contracts.AotProof`, see "Build / test".
 
 **FlatBuffers schemas** (in `FlatBuffers/<Area>/`) — `Remote` (dale↔dale) plus
 `Common` / `Sw` / `System`:
