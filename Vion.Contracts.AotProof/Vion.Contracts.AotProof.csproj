@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+        The NativeAOT proof for the Hw JSON contracts. Vion.Contracts itself is netstandard2.1 and cannot be
+        published, so the only way to show that HwJsonContext survives NativeAOT is a net10.0 executable that
+        references it and gets published with PublishAot.
+
+        Publish it for the RID of the machine you are on, then run the produced binary:
+            dotnet publish Vion.Contracts.AotProof -r linux-x64 -c Release
+            dotnet publish Vion.Contracts.AotProof -r win-x64   -c Release
+        PublishAot is set below rather than passed as /p:PublishAot=true on the command line on purpose: a
+        global property reaches every project in the graph, and Vion.Contracts is netstandard2.1, which fails
+        with NETSDK1207 ("Ahead-of-time compilation is not supported for the target framework").
+
+        The proof is both halves: no IL2026 / IL3050 at publish, and a clean exit-0 run afterwards. A JIT unit
+        test proves neither — the non-generic JsonStringEnumConverter passes JIT happily and only fails once
+        reflection is trimmed away. NativeAOT needs a platform linker, so this cannot be published on a machine
+        without one (clang on Linux, the Visual Studio C++ workload on Windows); CI does it on Linux, see
+        .github/workflows/aot-proof.yml.
+
+        Not packable and not a test project: it ships nowhere and `dotnet test` ignores it. It is in the solution
+        so the style gate cleans it and so a plain `dotnet build` still runs the AOT analyzers over it.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>false</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <PublishAot>true</PublishAot>
+        <!-- Turn the AOT/trim diagnostics this project exists to detect into build failures, so a regression
+             cannot be lost in a wall of warnings. This covers the Roslyn analyzer half; the ILC half is
+             checked by the grep step in .github/workflows/aot-proof.yml. -->
+        <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL3050</WarningsAsErrors>
+        <!-- Report every trim/AOT warning individually instead of collapsing them into one IL2104/IL3053
+             per assembly, so the workflow's grep sees the real code and cannot be fooled by an aggregate. -->
+        <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Vion.Contracts\Vion.Contracts.csproj"/>
+    </ItemGroup>
+
+</Project>

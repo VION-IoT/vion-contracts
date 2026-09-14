@@ -1,0 +1,103 @@
+name: NativeAOT proof
+# Publishes Vion.Contracts.AotProof with NativeAOT and runs the produced binary, proving that
+# Vion.Contracts.Hw.HwJsonContext is usable from the NativeAOT hardware-abstraction layers that
+# consume these contracts. See Vion.Contracts.AotProof/Vion.Contracts.AotProof.csproj.
+#
+# This is deliberately a separate workflow from publish.yml: the pack/test/style gate lives in the
+# shared VION-IoT/shared-workflows publish-nuget.yml and cannot host a RID-specific publish step.
+#
+# Runs on the org's self-hosted X64 runners — faster, and they spend no hosted minutes. NativeAOT
+# needs a platform linker, which the runner image does not carry, so the publish happens inside the
+# Alpine .NET SDK container that hal-raspberry already uses for the same purpose, with the same
+# toolchain packages and the same RID the HALs themselves ship: linux-musl-x64. Proving the RID the
+# HALs actually publish is the point — a glibc build would prove a platform nobody deploys.
+#
+# Uses docker run, not a job-level container:, so checkout and the diagnostic grep run on the host
+# (host-owned). A job container runs every step as root and salts the shared _work with root-owned
+# bin/obj, breaking the next job's checkout. The trap chowns outputs back on exit. Mirrors
+# hal-raspberry.yml's publish-amd64.
+#
+# The proof is both halves, and each has its own step below:
+#   1. the publish reports no IL2026 / IL3050, and
+#   2. the published native binary exits 0.
+# A JIT unit test proves neither: the non-generic JsonStringEnumConverter passes JIT happily and
+# only fails once reflection has been trimmed away.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: Vion.Contracts.AotProof
+  # Pinned, and the same image for both steps: the publish step warms it, so the run step costs no pull
+  # and is guaranteed to carry the musl the binary was linked against.
+  SDK_IMAGE: mcr.microsoft.com/dotnet/sdk:10.0.400-alpine3.23
+  PUBLISH_DIR: publish/aot-proof
+
+jobs:
+  aot-proof:
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish linux-musl-x64 (AOT) in Alpine container
+        # tee runs on the host, so publish.log is owned by the runner user and the grep step below
+        # does not depend on the trap having chowned anything yet. pipefail keeps a failed publish
+        # from being masked by tee's exit code.
+        run: |
+          set -o pipefail
+          mkdir -p "${{ env.PUBLISH_DIR }}"
+
+          docker run --rm \
+            -e HOME=/tmp/home \
+            -e HOST_UID="$(id -u)" \
+            -e HOST_GID="$(id -g)" \
+            -v "$PWD:/src" \
+            -w /src \
+            ${{ env.SDK_IMAGE }} \
+            sh -eux -c "
+              # root for apk add; trap returns workspace ownership to the runner
+              # user on exit (see the job header for why this runs as root)
+              trap 'chown -R \$HOST_UID:\$HOST_GID /src 2>/dev/null || true' EXIT
+
+              apk add --no-cache build-base llvm lld zlib-dev
+
+              mkdir -p \$HOME
+
+              dotnet publish ${{ env.PROJECT }} \
+                -c Release \
+                -r linux-musl-x64 \
+                -o /src/${{ env.PUBLISH_DIR }} \
+                --nologo
+            " 2>&1 | tee publish.log
+
+      - name: Fail on any AOT or trim diagnostic
+        # Grep rather than TreatWarningsAsErrors: IL2026/IL3050 are what the proof is about, and an
+        # unrelated warning from a dependency should not be able to fail it. IL2104/IL3053 are the
+        # per-assembly aggregates — they must be caught too, or a real IL2026 collapsed into one of
+        # them would slip past. TrimmerSingleWarn=false in the csproj keeps them from appearing.
+        run: |
+          if grep -E 'IL2026|IL3050|IL2104|IL3053' publish.log; then
+            echo "::error::NativeAOT publish reported an AOT/trim diagnostic — the Hw contracts are not AOT-safe."
+            exit 1
+          fi
+          echo "No IL2026 / IL3050 reported."
+
+      - name: Run the published native binary
+        # In the same image, because the binary is musl-linked and the runner host is glibc — it
+        # would die on the host with "No such file or directory" from the missing musl loader. The
+        # workspace is mounted read-only: this step only executes, so it cannot leave a root-owned
+        # file behind and needs no chown trap.
+        run: |
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            -w /src \
+            ${{ env.SDK_IMAGE }} \
+            ./${{ env.PUBLISH_DIR }}/Vion.Contracts.AotProof
