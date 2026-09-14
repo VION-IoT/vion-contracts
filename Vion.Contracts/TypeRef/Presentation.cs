@@ -39,6 +39,20 @@ namespace Vion.Contracts.TypeRef
         /// </summary>
         public string? Format { get; init; }
 
+        /// <summary>
+        ///     Conditional-visibility predicate — a presentation hint evaluated reactively in the
+        ///     dashboard UI (only), against live sibling-property values of the same logic-block
+        ///     instance. When it evaluates false the member is hidden from the form; it keeps
+        ///     existing and functioning everywhere else (runtime, MQTT, cloud DB, introspection) —
+        ///     display-only and fail-open. The string is a typed subset of the dashboard's
+        ///     widget-expression dialect (comparisons, <c>in</c>, <c>&amp;&amp;</c>/<c>||</c>/<c>!</c>,
+        ///     bare and two-segment <c>Service.Property</c> refs); the grammar and evaluation
+        ///     semantics are specified in <c>docs/predicates.md</c> and pinned by the shared
+        ///     <c>Predicates/predicate-conformance.json</c> vector. This package transports the
+        ///     predicate verbatim and never evaluates it (there is no C# evaluator here).
+        /// </summary>
+        public string? VisibleWhen { get; init; }
+
         public ImmutableDictionary<string, string>? StatusMappings { get; init; }
 
         /// <summary>
@@ -54,7 +68,7 @@ namespace Vion.Contracts.TypeRef
         {
             get =>
                 DisplayName is null && Group is null && Order is null && Category is null && Importance is null && UIHint is null && Decimals is null && Format is null &&
-                (StatusMappings is null || StatusMappings.IsEmpty) && (EnumLabels is null || EnumLabels.IsEmpty);
+                VisibleWhen is null && (StatusMappings is null || StatusMappings.IsEmpty) && (EnumLabels is null || EnumLabels.IsEmpty);
         }
 
         /// <inheritdoc />
@@ -110,6 +124,11 @@ namespace Vion.Contracts.TypeRef
                 return false;
             }
 
+            if (VisibleWhen != other.VisibleWhen)
+            {
+                return false;
+            }
+
             if (!DictionariesEqual(StatusMappings, other.StatusMappings))
             {
                 return false;
@@ -135,6 +154,7 @@ namespace Vion.Contracts.TypeRef
             hash.Add(UIHint);
             hash.Add(Decimals);
             hash.Add(Format);
+            hash.Add(VisibleWhen);
             AddDictionary(ref hash, StatusMappings);
             AddDictionary(ref hash, EnumLabels);
             return hash.ToHashCode();

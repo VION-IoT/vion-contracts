@@ -23,6 +23,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Copy the canonical predicate conformance vector to the test output so the shape guard
+             runs against the real file (not a vendored copy). -->
+        <None Include="..\Vion.Contracts\Predicates\predicate-conformance.json" Link="Predicates\predicate-conformance.json" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting"/>
     </ItemGroup>
 

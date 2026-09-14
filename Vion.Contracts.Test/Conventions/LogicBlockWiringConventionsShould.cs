@@ -25,6 +25,16 @@ namespace Vion.Contracts.Test.Conventions
         }
 
         [TestMethod]
+        public void ExposeIncludedWhenAnnotationKeyAsConst()
+        {
+            // RFC 0016 config-time inclusion gate. The dale-parser producer stamps this key on gated
+            // interface/contract bindings; cloud-api reads it. A diff here is a wire break.
+            const string key = LogicBlockWiringConventions.IncludedWhenAnnotationKey;
+
+            Assert.AreEqual("IncludedWhen", string.Concat(key));
+        }
+
+        [TestMethod]
         public void ExposeTheFourLinkMultiplicityTokensAsConst()
         {
             const string exactlyOne = LogicBlockWiringConventions.ExactlyOne;

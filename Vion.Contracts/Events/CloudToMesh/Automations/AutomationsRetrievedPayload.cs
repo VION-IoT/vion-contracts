@@ -4,10 +4,5 @@ using System.Collections.Generic;
 namespace Vion.Contracts.Events.CloudToMesh.Automations
 {
     [Schema("AutomationsRetrievedPayload")]
-    public class AutomationsRetrievedPayload : IMessage
-    {
-        public required List<Automation> Automations { get; set; }
-
-        public Dictionary<Guid, ObjectSyncStatus>? SyncStatusByObjectId { get; set; }
-    }
+    public record AutomationsRetrievedPayload(List<Automation> Automations, Dictionary<Guid, ObjectSyncStatus> SyncStatusByObjectId) : IMessage;
 }

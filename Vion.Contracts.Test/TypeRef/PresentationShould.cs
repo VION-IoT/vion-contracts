@@ -64,5 +64,40 @@ namespace Vion.Contracts.Test.TypeRef
             Assert.AreEqual(p1.GetHashCode(), p2.GetHashCode());
             Assert.AreNotEqual(p1.GetHashCode(), p3.GetHashCode());
         }
+
+        [TestMethod]
+        public void RoundTripVisibleWhenField()
+        {
+            var p = new Presentation { VisibleWhen = "DirectMeasurement == false" };
+            Assert.AreEqual("DirectMeasurement == false", p.VisibleWhen);
+            Assert.IsFalse(p.IsEmpty);
+        }
+
+        [TestMethod]
+        public void VisibleWhenIsNullByDefault()
+        {
+            var p = new Presentation();
+            Assert.IsNull(p.VisibleWhen);
+        }
+
+        [TestMethod]
+        public void VisibleWhenParticipatesInEquality()
+        {
+            var p1 = new Presentation { VisibleWhen = "DirectMeasurement == false" };
+            var p2 = new Presentation { VisibleWhen = "DirectMeasurement == false" };
+            var p3 = new Presentation { VisibleWhen = "Mode == 'Eco'" };
+            Assert.AreEqual(p1, p2);
+            Assert.AreNotEqual(p1, p3);
+        }
+
+        [TestMethod]
+        public void VisibleWhenParticipatesInHashCode()
+        {
+            var p1 = new Presentation { VisibleWhen = "DirectMeasurement == false" };
+            var p2 = new Presentation { VisibleWhen = "DirectMeasurement == false" };
+            var p3 = new Presentation { VisibleWhen = "Mode == 'Eco'" };
+            Assert.AreEqual(p1.GetHashCode(), p2.GetHashCode());
+            Assert.AreNotEqual(p1.GetHashCode(), p3.GetHashCode());
+        }
     }
 }

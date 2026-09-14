@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 
 namespace Vion.Contracts.Events.CloudToMesh
 {
     /// <summary>
     ///     Command that contains the complete configuration for logic blocks, their interfaces, and contract mappings for an
     ///     installation.
-    ///     Sent from Cloud to Mesh for forwarding to Dale
+    ///     Sent from Cloud to Mesh for forwarding to Dale.
     /// </summary>
     [Schema("SetLogicConfigurationPayload")]
     public class SetLogicConfigurationPayload : IMessage
@@ -23,18 +24,6 @@ namespace Vion.Contracts.Events.CloudToMesh
         /// </summary>
         public List<LogicBlockLibrarySource> LogicBlockLibrarySources { get; set; } = [];
 
-        /// <summary>
-        ///     Deprecated. Use ContractMappings instead. Will be removed in next major version.
-        /// </summary>
-        [Obsolete("Use ContractMappings instead.")]
-        public List<IoMapping> IoMappings { get; set; } = [];
-
-        /// <summary>
-        ///     Deprecated. Use ContractMappings instead. Will be removed in next major version.
-        /// </summary>
-        [Obsolete("Use ContractMappings instead.")]
-        public List<HardwareBlock> HardwareBlocks { get; set; } = [];
-
         public class LogicBlockInstance
         {
             public required string Id { get; set; }
@@ -48,6 +37,23 @@ namespace Vion.Contracts.Events.CloudToMesh
             public required string Name { get; set; }
 
             public required List<ServiceIdMapping> Services { get; set; }
+
+            /// <summary>
+            ///     Operator-chosen <c>[InstantiationParameter]</c> values (RFC 0016 / config-time structural
+            ///     gating), applied to the block before <c>Configure</c> so inclusion gates resolve at bind time.
+            ///     The first config-time value channel on an instance. Additive and nullable: <c>null</c> (or an
+            ///     empty list) for instances with no parameters and for payloads produced before the feature
+            ///     shipped.
+            ///     <para>
+            ///         A <b>list, never an identifier-keyed dictionary</b> (decision 0045): the platform's JSON
+            ///         serialization applies a camelCase <c>DictionaryKeyPolicy</c>, so a dictionary
+            ///         <c>{ "ChargePointCount": 3 }</c> would arrive as <c>{ "chargePointCount": 3 }</c> and no
+            ///         longer match the case-sensitive introspection identifier. Identifiers therefore travel as
+            ///         <see cref="InstantiationParameterValue.Identifier" /> <em>values</em>, where no key policy
+            ///         touches them.
+            ///     </para>
+            /// </summary>
+            public List<InstantiationParameterValue>? InstantiationParameterValues { get; set; }
         }
 
         public class ServiceIdMapping
@@ -55,6 +61,19 @@ namespace Vion.Contracts.Events.CloudToMesh
             public required string Identifier { get; set; }
 
             public required string ServiceId { get; set; }
+        }
+
+        /// <summary>
+        ///     One operator-chosen <c>[InstantiationParameter]</c> value on a
+        ///     <see cref="LogicBlockInstance" /> (RFC 0016). <see cref="Identifier" /> is the case-sensitive
+        ///     introspection property identifier; <see cref="Value" /> is the JSON scalar (enum as a member-name
+        ///     string, integer as a number, bool, or string) applied to the block before <c>Configure</c>.
+        /// </summary>
+        public class InstantiationParameterValue
+        {
+            public required string Identifier { get; set; }
+
+            public JsonNode? Value { get; set; }
         }
 
         public class InterfaceMapping
@@ -98,34 +117,6 @@ namespace Vion.Contracts.Events.CloudToMesh
             public required string DownloadUrl { get; set; }
 
             public required DateTimeOffset DownloadUrlExpiresAt { get; set; }
-        }
-
-        /// <summary>
-        ///     Deprecated. Use ContractMapping instead.
-        /// </summary>
-        [Obsolete("Use ContractMapping instead.")]
-        public class IoMapping
-        {
-            public required string LogicBlockInstanceId { get; set; }
-
-            public required string IoIdentifier { get; set; }
-
-            public required string InstallationTopic { get; set; }
-
-            public required string MappedHardwareBlockInstanceId { get; set; }
-
-            public required string MappedHardwareElementIdentifier { get; set; }
-
-            public required string MappedInstallationTopic { get; set; }
-        }
-
-        /// <summary>
-        ///     Deprecated. Use ContractMapping instead.
-        /// </summary>
-        [Obsolete("Use ContractMapping instead.")]
-        public class HardwareBlock
-        {
-            public required string Id { get; set; }
         }
     }
 }
