@@ -11,6 +11,10 @@ namespace Vion.Contracts.Hw.Ao
     ///         is therefore only interpretable together with its topic.
     ///     </para>
     /// </summary>
-    /// <param name="Value">The output value in the endpoint's engineering unit.</param>
+    /// <param name="Value">
+    ///     The output value in the endpoint's engineering unit. May be non-finite, in which case it travels as a quoted
+    ///     named literal (<c>"NaN"</c>, <c>"Infinity"</c>, <c>"-Infinity"</c>). See
+    ///     <see cref="Vion.Contracts.Hw.HwJsonContext" />.
+    /// </param>
     public record AoStatePayload(double Value);
 }
