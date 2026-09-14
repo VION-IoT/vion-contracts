@@ -16,7 +16,7 @@ public struct SetAoPayload : IFlatbufferObject
   public static void ValidateVersion() { FlatBufferConstants.FLATBUFFERS_25_2_10(); }
   public static SetAoPayload GetRootAsSetAoPayload(ByteBuffer _bb) { return GetRootAsSetAoPayload(_bb, new SetAoPayload()); }
   public static SetAoPayload GetRootAsSetAoPayload(ByteBuffer _bb, SetAoPayload obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public static bool VerifySetAoPayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer("", false, SetAoPayloadVerify.Verify); }
+  public static bool VerifySetAoPayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer(null, false, SetAoPayloadVerify.Verify); }
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public SetAoPayload __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 

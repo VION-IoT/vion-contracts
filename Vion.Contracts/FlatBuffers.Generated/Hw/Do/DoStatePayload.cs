@@ -16,7 +16,7 @@ public struct DoStatePayload : IFlatbufferObject
   public static void ValidateVersion() { FlatBufferConstants.FLATBUFFERS_25_2_10(); }
   public static DoStatePayload GetRootAsDoStatePayload(ByteBuffer _bb) { return GetRootAsDoStatePayload(_bb, new DoStatePayload()); }
   public static DoStatePayload GetRootAsDoStatePayload(ByteBuffer _bb, DoStatePayload obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public static bool VerifyDoStatePayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer("", false, DoStatePayloadVerify.Verify); }
+  public static bool VerifyDoStatePayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer(null, false, DoStatePayloadVerify.Verify); }
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public DoStatePayload __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 

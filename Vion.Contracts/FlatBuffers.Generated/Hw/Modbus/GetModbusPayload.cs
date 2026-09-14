@@ -16,7 +16,7 @@ public struct GetModbusPayload : IFlatbufferObject
   public static void ValidateVersion() { FlatBufferConstants.FLATBUFFERS_25_2_10(); }
   public static GetModbusPayload GetRootAsGetModbusPayload(ByteBuffer _bb) { return GetRootAsGetModbusPayload(_bb, new GetModbusPayload()); }
   public static GetModbusPayload GetRootAsGetModbusPayload(ByteBuffer _bb, GetModbusPayload obj) { return (obj.__assign(_bb.GetInt(_bb.Position) + _bb.Position, _bb)); }
-  public static bool VerifyGetModbusPayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer("", false, GetModbusPayloadVerify.Verify); }
+  public static bool VerifyGetModbusPayload(ByteBuffer _bb) {Google.FlatBuffers.Verifier verifier = new Google.FlatBuffers.Verifier(_bb); return verifier.VerifyBuffer(null, false, GetModbusPayloadVerify.Verify); }
   public void __init(int _i, ByteBuffer _bb) { __p = new Table(_i, _bb); }
   public GetModbusPayload __assign(int _i, ByteBuffer _bb) { __init(_i, _bb); return this; }
 
