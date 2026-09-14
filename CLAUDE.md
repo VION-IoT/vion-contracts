@@ -110,6 +110,15 @@ sparingly and locally, never to opt a whole file out.
   truth that can drift.
 - **Identity lives in the topic**, not the payload. A state payload is `{"value":…}`
   and nothing more.
+- **An analog value may be non-finite**, and travels as a quoted named literal —
+  `{"value":"NaN"}`, `{"value":"Infinity"}`, `{"value":"-Infinity"}`. An unplugged
+  sensor or a divide-by-zero in a scaling formula is ordinary in the field, and dale's
+  analog contract guarantees such a reading passes through rather than failing the
+  publish. `HwJsonContext` enables this with
+  `NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals`; a consumer
+  using its own `JsonSerializerOptions` must set the same option or it will throw
+  `ArgumentException` on write — not `JsonException`, so a `catch` around a
+  deserialise will not see it.
 - Content type is `MessageMimeTypes.Json`.
 - **Register every new payload in `Hw/HwJsonContext.cs`.** It is the source-generated
   `JsonSerializerContext` for this folder, and the only JSON entry point the NativeAOT
