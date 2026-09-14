@@ -58,5 +58,24 @@ if ($patchedCount -gt 0) {
   Write-Host "ℹ️  Patched $patchedCount file(s) to use $nugetVersionConstant (matches Google.FlatBuffers NuGet pin)"
 }
 
+# --- Patch VerifyBuffer file identifier ---
+# flatc emits `verifier.VerifyBuffer("", false, ...)` for schemas with no `file_identifier`
+# declared (none of ours declare one - see CLAUDE.md). Google.FlatBuffers.Verifier.VerifyBuffer
+# requires a null identifier to skip the identifier check; a non-null one must be exactly 4
+# characters, so the emitted "" throws ArgumentException on every call, valid buffers included.
+# Post-process to pass null instead.
+$identifierPatchedCount = 0
+foreach ($f in $generatedFiles) {
+  $content = Get-Content $f.FullName -Raw
+  $patched = $content -replace 'VerifyBuffer\("", ', 'VerifyBuffer(null, '
+  if ($content -ne $patched) {
+    Set-Content -Path $f.FullName -Value $patched -NoNewline
+    $identifierPatchedCount++
+  }
+}
+if ($identifierPatchedCount -gt 0) {
+  Write-Host "ℹ️  Patched $identifierPatchedCount file(s) to pass a null VerifyBuffer file identifier"
+}
+
 Write-Host "✅ Generation complete!"
 Write-Host "✅ Output: $(Resolve-Path $out)"
