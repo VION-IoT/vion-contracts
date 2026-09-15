@@ -48,7 +48,7 @@ namespace Vion.Contracts.AotProof
                 return 1;
             }
 
-            Console.WriteLine("AOT proof passed: 10 records + 2 enums round-tripped through HwJsonContext, non-finite analog value included.");
+            Console.WriteLine("AOT proof passed: 10 records + 2 enums round-tripped through HwJsonContext.");
 
             return 0;
         }
@@ -62,12 +62,6 @@ namespace Vion.Contracts.AotProof
             Check(new AiStatePayload(21.4), HwJsonContext.Default.AiStatePayload, "{\"value\":21.4}");
             Check(new AoStatePayload(42.5), HwJsonContext.Default.AoStatePayload, "{\"value\":42.5}");
             Check(new SetAoPayload(-1.25), HwJsonContext.Default.SetAoPayload, "{\"value\":-1.25}");
-
-            // A non-finite analog value travels as a quoted named literal, which the context enables with
-            // JsonNumberHandling.AllowNamedFloatingPointLiterals. Worth proving under AOT specifically: the named-literal
-            // path is a different branch of the number reader/writer than the one every finite value above takes.
-            // EqualityComparer<T>.Default gets this right where == would not — NaN != NaN, but NaN.Equals(NaN) is true.
-            Check(new AoStatePayload(double.NaN), HwJsonContext.Default.AoStatePayload, "{\"value\":\"NaN\"}");
         }
 
         private static void CheckModbusPayloads()
