@@ -1,6 +1,5 @@
 using System;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Vion.Contracts.Hw;
 using Vion.Contracts.Hw.Ai;
@@ -34,16 +33,6 @@ namespace Vion.Contracts.Test.Hw
                                                                         DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
                                                                     };
 
-        // WireOptions plus the one option the context adds. Comparing against this rather than only asserting the
-        // literal strings is what shows the named-literal tokens are System.Text.Json's own spelling and not something
-        // the context invented: a consumer that sets the same option on plain options gets the same bytes.
-        private static readonly JsonSerializerOptions NonFiniteWireOptions = new()
-                                                                             {
-                                                                                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                                                                                 DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
-                                                                                 NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
-                                                                             };
-
         [TestMethod]
         public void SerialiseEveryStateAndSetPayloadExactlyAsTheReflectionPathDoes()
         {
@@ -56,41 +45,21 @@ namespace Vion.Contracts.Test.Hw
         }
 
         [TestMethod]
-        public void CarryNonFiniteAnalogValuesAsTheNamedLiterals()
+        public void RejectNonFiniteAnalogValues()
         {
-            // A non-finite reading is ordinary in the field, not a bug: an unplugged or faulty sensor, or a
-            // divide-by-zero in a scaling formula. dale's analog contract guarantees these pass through, and JSON has
-            // no number token for them — the named literals, quoted, are the only way to carry one.
-            AssertNamedLiteral(double.NaN, "NaN");
-            AssertNamedLiteral(double.PositiveInfinity, "Infinity");
-            AssertNamedLiteral(double.NegativeInfinity, "-Infinity");
-        }
-
-        [TestMethod]
-        public void ShowWhatBreaksWithoutTheNamedLiteralOption()
-        {
-            // Guards the *reason* for NumberHandling on the context, not just its effect: WireOptions is the context's
-            // options minus that one setting, so this is what the contracts shipped before the option was added.
-            // Note the write failure is ArgumentException, not JsonException — a consumer that wraps its deserialise
-            // in catch(JsonException) would not catch the publish side at all.
-            Assert.Throws<ArgumentException>(() => JsonSerializer.Serialize(new AiStatePayload(double.NaN), WireOptions));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AiStatePayload>("{\"value\":\"NaN\"}", WireOptions));
+            // Non-finite analog values do not cross the hw/* JSON wire (operator decision 2026-09-15). The write
+            // throws ArgumentException, not JsonException, so a consumer wrapping its deserialise in
+            // catch(JsonException) would not catch the publish side at all.
+            Assert.Throws<ArgumentException>(() => JsonSerializer.Serialize(new AiStatePayload(double.NaN), HwJsonContext.Default.AiStatePayload));
+            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize("{\"value\":\"NaN\"}", HwJsonContext.Default.AiStatePayload));
         }
 
         [TestMethod]
         public void KeepFiniteAnalogValuesAsBareNumbers()
         {
-            // Allowing the named literals must not quote ordinary readings — that would be a silent wire break for
-            // every finite value, which is all of them in normal operation.
             Assert.AreEqual("{\"value\":21.4}", JsonSerializer.Serialize(new AiStatePayload(21.4), HwJsonContext.Default.AiStatePayload));
             Assert.AreEqual("{\"value\":0}", JsonSerializer.Serialize(new AoStatePayload(0), HwJsonContext.Default.AoStatePayload));
             Assert.AreEqual("{\"value\":-1.25}", JsonSerializer.Serialize(new SetAoPayload(-1.25), HwJsonContext.Default.SetAoPayload));
-        }
-
-        [TestMethod]
-        public void ExposeTheNamedLiteralOptionAsTheGeneratedNumberHandling()
-        {
-            Assert.AreEqual(JsonNumberHandling.AllowNamedFloatingPointLiterals, HwJsonContext.Default.Options.NumberHandling);
         }
 
         [TestMethod]
@@ -177,35 +146,6 @@ namespace Vion.Contracts.Test.Hw
             // them here means a change to the attribute fails a test rather than only showing up on the wire.
             Assert.AreEqual(JsonNamingPolicy.CamelCase, HwJsonContext.Default.Options.PropertyNamingPolicy);
             Assert.AreEqual(JsonNamingPolicy.CamelCase, HwJsonContext.Default.Options.DictionaryKeyPolicy);
-        }
-
-        // All three analog payloads must agree on the token: an input reading, an output reading, and a command.
-        private static void AssertNamedLiteral(double value, string token)
-        {
-            var expectedJson = $"{{\"value\":\"{token}\"}}";
-
-            AssertNonFiniteRoundTrip(new AiStatePayload(value), HwJsonContext.Default.AiStatePayload, expectedJson, payload => payload.Value);
-            AssertNonFiniteRoundTrip(new AoStatePayload(value), HwJsonContext.Default.AoStatePayload, expectedJson, payload => payload.Value);
-            AssertNonFiniteRoundTrip(new SetAoPayload(value), HwJsonContext.Default.SetAoPayload, expectedJson, payload => payload.Value);
-        }
-
-        private static void AssertNonFiniteRoundTrip<T>(T payload, JsonTypeInfo<T> typeInfo, string expectedJson, Func<T, double> valueOf)
-        {
-            var json = JsonSerializer.Serialize(payload, typeInfo);
-
-            Assert.AreEqual(expectedJson, json, $"{typeof(T).Name} through HwJsonContext");
-
-            // Not AssertMatchesReflection: WireOptions lacks NumberHandling and would throw. Comparing against plain
-            // options that DO set it proves the token is System.Text.Json's own spelling, so a consumer on its own
-            // options cannot silently differ from the context.
-            Assert.AreEqual(expectedJson, JsonSerializer.Serialize(payload, NonFiniteWireOptions), $"{typeof(T).Name}: context and plain options disagree");
-
-            var roundTripped = JsonSerializer.Deserialize(json, typeInfo)!;
-
-            // double.Equals, not ==, because NaN != NaN but NaN.Equals(NaN) is true.
-            Assert.IsTrue(valueOf(roundTripped).Equals(valueOf(payload)), $"{typeof(T).Name}: {valueOf(payload)} round-tripped to {valueOf(roundTripped)}");
-            Assert.AreEqual(payload, roundTripped, $"{typeof(T).Name} record equality after round-trip");
-            Assert.AreEqual(expectedJson, JsonSerializer.Serialize(roundTripped, typeInfo), $"{typeof(T).Name} re-serialise");
         }
 
         private static void AssertMatchesReflection<T>(T value, JsonTypeInfo<T> typeInfo, string expectedJson)

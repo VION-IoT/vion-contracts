@@ -27,15 +27,6 @@ namespace Vion.Contracts.Hw
     ///         <see cref="JsonConverterAttribute" /> on the type itself, which this context honours. Repeating them
     ///         here would be a second source of truth for the same decision, and only one of the two would be read.
     ///     </para>
-    ///     <para>
-    ///         <c>NumberHandling</c> allows the <b>named floating-point literals</b>, so a non-finite analog value
-    ///         travels as <c>"NaN"</c>, <c>"Infinity"</c> or <c>"-Infinity"</c> — a quoted string, which is the only
-    ///         thing JSON can carry for them. Without it an unplugged sensor or a divide-by-zero in a scaling formula
-    ///         breaks the publish instead of the reading: <c>double.NaN</c> throws <c>ArgumentException</c> on write
-    ///         (not even <c>JsonException</c>, so a consumer's <c>catch</c> misses it) and the quoted form cannot be
-    ///         read back. dale's analog contract guarantees these values pass through, so the guarantee is kept here
-    ///         rather than in each consumer's own options. Symmetric: the option governs both read and write.
-    ///     </para>
     /// </summary>
     [JsonSerializable(typeof(DiStatePayload))]
     [JsonSerializable(typeof(DoStatePayload))]
@@ -52,8 +43,6 @@ namespace Vion.Contracts.Hw
     // through the context, not only as a field of a payload.
     [JsonSerializable(typeof(ModbusFunctionCode))]
     [JsonSerializable(typeof(ModbusResponseCode))]
-    [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-                                 DictionaryKeyPolicy = JsonKnownNamingPolicy.CamelCase,
-                                 NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals)]
+    [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DictionaryKeyPolicy = JsonKnownNamingPolicy.CamelCase)]
     public partial class HwJsonContext : JsonSerializerContext;
 }
