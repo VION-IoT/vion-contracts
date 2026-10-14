@@ -97,6 +97,8 @@ namespace Vion.Contracts.Events.MeshToCloud
         Succeeded,
 
         Failed,
+
+        Unknown,
     }
 
     public enum SeverityLevel
