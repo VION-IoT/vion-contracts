@@ -69,6 +69,16 @@ namespace Vion.Contracts.Events.MeshToCloud
         BrokerRestarted,
 
         LogicConfigurationApplied,
+
+        NetworkPeersSynced,
+
+        BridgingDeclarationAccepted,
+
+        BridgingDeclarationRejected,
+
+        BridgeApplied,
+
+        BridgeRemoved,
     }
 
     public enum SystemEventSource
@@ -90,6 +100,8 @@ namespace Vion.Contracts.Events.MeshToCloud
         SystemControl,
 
         LogicConfiguration,
+
+        Bridging,
     }
 
     public enum SystemEventStatus
