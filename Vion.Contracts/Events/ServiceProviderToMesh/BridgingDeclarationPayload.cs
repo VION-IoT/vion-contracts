@@ -9,15 +9,15 @@ namespace Vion.Contracts.Events.ServiceProviderToMesh
     public readonly record struct BridgingDeclarationPayload(List<TopicDeclaration> Declarations);
 
     /// <summary>
-    ///     One topic a service provider needs bridged.
+    ///     Topics of another installation a service provider needs bridged.
     /// </summary>
-    /// <param name="Topic">An MQTT topic filter beginning with another gateway's installation topic.</param>
-    /// <param name="Access">How the service provider uses matching topics.</param>
-    public readonly record struct TopicDeclaration(string Topic, AccessType Access);
+    /// <param name="TopicFilter">An MQTT topic filter, wildcards allowed, under another installation's topic.</param>
+    /// <param name="Access">What the service provider does on the topics <paramref name="TopicFilter" /> covers.</param>
+    public readonly record struct TopicDeclaration(string TopicFilter, AccessType Access);
 
     public enum AccessType
     {
-        /// <summary>The service provider publishes on matching topics, and they are forwarded to that gateway.</summary>
+        /// <summary>The service provider publishes on them.</summary>
         Publish,
     }
 }
