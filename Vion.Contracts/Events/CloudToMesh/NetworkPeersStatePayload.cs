@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace Vion.Contracts.Events.CloudToMesh
 {
     /// <summary>
-    ///     This gateway's peers and where each one can be reached. Which gateways are peers is decided by the cloud,
-    ///     not by this contract. The reply to <see cref="Vion.Contracts.Events.MeshToCloud.GetNetworkPeersPayload" />
-    ///     and every later change carry the whole list.
+    ///     This gateway's peers and where each one can be reached. The reply to
+    ///     <see cref="Vion.Contracts.Events.MeshToCloud.GetNetworkPeersPayload" /> and every later change carry the
+    ///     whole list.
     /// </summary>
     [Schema("NetworkPeersStatePayload")]
     public record NetworkPeersStatePayload(List<NetworkPeer> Peers) : IMessage;
