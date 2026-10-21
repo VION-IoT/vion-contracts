@@ -123,6 +123,15 @@ namespace Vion.Contracts.Mqtt
         // Cloud -> Mesh
         public const string ServiceProviderRegistrationsRetrievedCloud = ServiceProviderRegistrationCloud + "s" + "/retrieved";
 
+        // Mesh -> Cloud
+        public const string NetworkState = "/cloud/system/network/state";
+
+        // Mesh -> Cloud
+        public const string PeersNetworkGet = "/cloud/system/peers/network/get";
+
+        // Cloud -> Mesh
+        public const string PeersNetworkState = "/cloud/system/peers/network/state";
+
         #endregion
 
         #region Mesh - Dale & Hal
@@ -236,6 +245,11 @@ namespace Vion.Contracts.Mqtt
 
         // ServiceProvider -> Mesh
         public const string ServiceProviderLogLevelState = "/" + ServiceProvider + "/logLevel/state";
+
+        public const string Bridging = "/system/bridging";
+
+        // ServiceProvider -> Mesh
+        public const string BridgingDeclaration = Bridging + "/declaration";
 
         #endregion
     }
