@@ -249,8 +249,6 @@ namespace Vion.Contracts.Mqtt
         public const string Bridging = "/system/bridging";
 
         // ServiceProvider -> Mesh
-        // Full topic {installationTopic}/{serviceProviderIdentifier}/system/bridging/declaration, published RETAINED:
-        // the latest retained declaration replaces the previous one whole.
         public const string BridgingDeclaration = Bridging + "/declaration";
 
         #endregion
