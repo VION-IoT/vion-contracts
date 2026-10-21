@@ -70,7 +70,7 @@ namespace Vion.Contracts.Events.MeshToCloud
 
         LogicConfigurationApplied,
 
-        PeersNetworkStateSynced,
+        PeersSynced,
 
         BridgingDeclarationAccepted,
 
