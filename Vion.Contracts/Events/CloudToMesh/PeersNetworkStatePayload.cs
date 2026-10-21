@@ -5,11 +5,11 @@ namespace Vion.Contracts.Events.CloudToMesh
 {
     /// <summary>
     ///     This gateway's peers and where each one can be reached. The reply to
-    ///     <see cref="Vion.Contracts.Events.MeshToCloud.GetNetworkPeersPayload" /> and every later change carry the
+    ///     <see cref="Vion.Contracts.Events.MeshToCloud.GetPeersNetworkStatePayload" /> and every later change carry the
     ///     whole list.
     /// </summary>
-    [Schema("NetworkPeersStatePayload")]
-    public record NetworkPeersStatePayload(List<NetworkPeer> Peers) : IMessage;
+    [Schema("PeersNetworkStatePayload")]
+    public record PeersNetworkStatePayload(List<PeerNetworkState> Peers) : IMessage;
 
     /// <summary>
     ///     A peer gateway and where its broker can be reached.
@@ -25,5 +25,5 @@ namespace Vion.Contracts.Events.CloudToMesh
     ///     The port the peer last reported in its
     ///     <see cref="Vion.Contracts.Events.MeshToCloud.NetworkStatePayload" />.
     /// </param>
-    public readonly record struct NetworkPeer(Guid GatewayId, string InstallationTopic, List<string> Addresses, int Port);
+    public readonly record struct PeerNetworkState(Guid GatewayId, string InstallationTopic, List<string> Addresses, int Port);
 }

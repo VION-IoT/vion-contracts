@@ -127,10 +127,10 @@ namespace Vion.Contracts.Mqtt
         public const string NetworkState = "/cloud/system/network/state";
 
         // Mesh -> Cloud
-        public const string NetworkPeersGet = "/cloud/system/network/peers/get";
+        public const string PeersNetworkGet = "/cloud/system/peers/network/get";
 
         // Cloud -> Mesh
-        public const string NetworkPeersState = "/cloud/system/network/peers/state";
+        public const string PeersNetworkState = "/cloud/system/peers/network/state";
 
         #endregion
 
