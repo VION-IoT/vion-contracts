@@ -20,7 +20,6 @@ namespace Vion.Contracts.Events.ServiceProviderToMesh
 
     public enum AccessType
     {
-        /// <summary>The service provider publishes on them.</summary>
         Publish,
     }
 }
