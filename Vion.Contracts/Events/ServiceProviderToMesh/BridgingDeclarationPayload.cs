@@ -11,7 +11,10 @@ namespace Vion.Contracts.Events.ServiceProviderToMesh
     /// <summary>
     ///     Topics of another installation a service provider needs bridged.
     /// </summary>
-    /// <param name="TopicFilter">An MQTT topic filter, wildcards allowed, under another installation's topic.</param>
+    /// <param name="TopicFilter">
+    ///     An MQTT topic filter that starts with another installation's topic, written out literally;
+    ///     wildcards are allowed only after it.
+    /// </param>
     /// <param name="Access">What the service provider does on the topics <paramref name="TopicFilter" /> covers.</param>
     public readonly record struct TopicDeclaration(string TopicFilter, AccessType Access);
 
