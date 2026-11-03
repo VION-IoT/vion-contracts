@@ -225,13 +225,27 @@ namespace Vion.Contracts.AotProof
             return left.FunctionCode == right.FunctionCode && left.UnitIdentifier == right.UnitIdentifier && left.Address == right.Address && SameBytes(left.Data, right.Data);
         }
 
-        // Records compare their List and JsonNode members by reference, so the states are compared by value.
+        // Records compare their List and JsonNode members by reference, so the states are compared by value. The values are
+        // compared as JSON text: JsonNode.DeepEquals throws InsufficientExecutionStackException in the linux-musl-x64
+        // NativeAOT binary, even on a flat object.
         private static bool SamePropertiesState(PropertiesStatePayload left, PropertiesStatePayload right)
         {
-            return left.PropertiesState.Count == right.PropertiesState.Count && left.PropertiesState
-                                                                                    .Zip(right.PropertiesState)
-                                                                                    .All(pair => pair.First.PropertyIdentifier == pair.Second.PropertyIdentifier &&
-                                                                                                 JsonNode.DeepEquals(pair.First.Value, pair.Second.Value));
+            if (left.PropertiesState.Count != right.PropertiesState.Count)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < left.PropertiesState.Count; index++)
+            {
+                var leftState = left.PropertiesState[index];
+                var rightState = right.PropertiesState[index];
+                if (leftState.PropertyIdentifier != rightState.PropertyIdentifier || leftState.Value?.ToJsonString() != rightState.Value?.ToJsonString())
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static bool SameBytes(byte[]? left, byte[]? right)
