@@ -25,6 +25,10 @@ namespace Vion.Contracts.Test.Events
 
         private const string EventsNamespace = "Vion.Contracts.Events";
 
+        private const string DefinitionTag = "x-vion-definition";
+
+        private static readonly JsonSchemaExporterOptions TaggingOptions = new() { TransformSchemaNode = Tag };
+
         private static readonly JsonSerializerOptions FileOptions = new()
                                                                     {
                                                                         WriteIndented = true,
@@ -61,19 +65,68 @@ namespace Vion.Contracts.Test.Events
             return typeInfo ?? throw new InvalidOperationException($"{payloadType.FullName} is not registered.");
         }
 
+        /// <summary>
+        ///     The <c>$defs</c> key of a named type: its namespace relative to <c>Vion.Contracts.Events</c> plus its type
+        ///     name, declaring types first (<c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>). A type outside
+        ///     <c>Vion.Contracts.Events</c> is keyed by its full namespace instead
+        ///     (<c>Microsoft.Extensions.Logging.LogLevel</c>), whose first segment is never a direction name.
+        /// </summary>
+        public static string DefinitionKey(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                throw new InvalidOperationException($"No definition key rule for the generic type {type}.");
+            }
+
+            var names = new Stack<string>();
+            for (var current = type; current is not null; current = current.DeclaringType)
+            {
+                names.Push(current.Name);
+            }
+
+            var name = string.Join(".", names);
+            var space = type.Namespace ?? "";
+            if (space == EventsNamespace)
+            {
+                return name;
+            }
+
+            if (space.StartsWith(EventsNamespace + ".", StringComparison.Ordinal))
+            {
+                return $"{space.Substring(EventsNamespace.Length + 1)}.{name}";
+            }
+
+            return space.Length == 0 ? name : $"{space}.{name}";
+        }
+
+        /// <summary>
+        ///     The export: what <see cref="JsonSchemaExporter" /> writes for every payload over the context's options,
+        ///     with every record, struct and enum a payload nests hoisted into one top-level <c>$defs</c> and referenced
+        ///     as <c>#/$defs/&lt;key&gt;</c>, in place of the exporter's own pointer <c>$ref</c>s.
+        /// </summary>
         public static JsonObject Build()
         {
+            var definitions = new SortedDictionary<string, JsonObject>(StringComparer.Ordinal);
             var payloads = new JsonObject();
             foreach (var payloadType in PayloadTypes)
             {
+                var exported = TypeInfo(payloadType).GetJsonSchemaAsNode(TaggingOptions);
+                var hoister = new DefinitionHoister(exported, definitions);
+
                 payloads[Key(payloadType)] = new JsonObject
                                              {
                                                  ["schema"] = SchemaName(payloadType),
-                                                 ["jsonSchema"] = TypeInfo(payloadType).GetJsonSchemaAsNode(),
+                                                 ["jsonSchema"] = hoister.Hoist(),
                                              };
             }
 
-            return new JsonObject { ["payloads"] = payloads };
+            var defs = new JsonObject();
+            foreach (var definition in definitions)
+            {
+                defs[definition.Key] = definition.Value;
+            }
+
+            return new JsonObject { ["$defs"] = defs, ["payloads"] = payloads };
         }
 
         /// <summary>The export as the committed file holds it: indented, LF line endings, one trailing newline.</summary>
@@ -94,6 +147,35 @@ namespace Vion.Contracts.Test.Events
             }
 
             throw new InvalidOperationException($"No Vion.Contracts.sln above {AppContext.BaseDirectory}.");
+        }
+
+        // Marks every node of a named type with its definition key while the exporter writes it. Only a keyword is
+        // added, so the exporter's pointer $refs still resolve against the tagged tree.
+        private static JsonNode Tag(JsonSchemaExporterContext context, JsonNode schema)
+        {
+            if (context.Path.IsEmpty || schema is not JsonObject node)
+            {
+                return schema;
+            }
+
+            var type = Nullable.GetUnderlyingType(context.TypeInfo.Type) ?? context.TypeInfo.Type;
+            if (IsNamed(type))
+            {
+                node[DefinitionTag] = DefinitionKey(type);
+            }
+
+            return schema;
+        }
+
+        // Records, classes, structs and enums; never a collection, a dictionary, a primitive or a JsonNode.
+        private static bool IsNamed(Type type)
+        {
+            if (type.IsEnum)
+            {
+                return true;
+            }
+
+            return EventsJsonContext.Default.GetTypeInfo(type)?.Kind == JsonTypeInfoKind.Object;
         }
 
         private static List<Type> FindPayloadTypes()

@@ -6,20 +6,26 @@ namespace Vion.Contracts.Events
     /// <summary>
     ///     The committed JSON Schema export of every <c>Events/*</c> payload, embedded in this assembly.
     ///     <para>
-    ///         The export is one JSON object whose <c>payloads</c> member maps a key per payload to an entry holding two
-    ///         members, <c>schema</c> and <c>jsonSchema</c>. The key is <c>&lt;Direction&gt;.&lt;TypeName&gt;</c> — the
+    ///         The export is one JSON object with two members, <c>$defs</c> and <c>payloads</c>. <c>payloads</c> maps a key
+    ///         per payload to an entry holding <c>schema</c> and <c>jsonSchema</c>. The key is
+    ///         <c>&lt;Direction&gt;.&lt;TypeName&gt;</c> — the
     ///         namespace segment under <c>Vion.Contracts.Events</c> and the type name, because two pairs of payloads share a
     ///         type name across directions with different shapes. <c>schema</c> is the value the MQTT <c>schema</c>
     ///         user-property carries for that payload — the <see cref="SchemaAttribute" /> value where there is one,
     ///         otherwise the type name.
     ///         <c>jsonSchema</c> is what <c>System.Text.Json.Schema.JsonSchemaExporter</c> writes for the payload over
-    ///         <see cref="EventsJsonContext" />'s options, so it describes the bytes that context produces.
+    ///         <see cref="EventsJsonContext" />'s options, with its nested types moved into <c>$defs</c>, so it describes the
+    ///         bytes that context produces.
     ///     </para>
     ///     <para>
-    ///         Each <c>jsonSchema</c> is a standalone schema: the exporter writes a type met a second time — a recursive
-    ///         one, or one used by two properties — as a <c>$ref</c> JSON Pointer relative to that <c>jsonSchema</c>, not to
-    ///         the file. A consumer that moves a schema into a larger document rewrites those pointers. A value typed
-    ///         <c>JsonNode</c> or <c>object</c> is the free-form schema <c>true</c>.
+    ///         Every record, struct and enum a payload nests is defined once under <c>$defs</c> and referenced as
+    ///         <c>#/$defs/&lt;key&gt;</c>, from a payload or from another definition; no other <c>$ref</c> occurs. The key
+    ///         is the type's namespace relative to <c>Vion.Contracts.Events</c> plus its name, declaring types first
+    ///         (<c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>); a type outside <c>Vion.Contracts.Events</c> is
+    ///         keyed by its full name (<c>Microsoft.Extensions.Logging.LogLevel</c>). A definition never allows
+    ///         <c>null</c>; a use that does is <c>{"anyOf": [{"$ref": …}, {"type": "null"}]}</c>. Collections and
+    ///         dictionaries stay inline. A value typed <c>JsonNode</c> or <c>object</c> is the free-form schema
+    ///         <c>true</c>.
     ///     </para>
     ///     <para>
     ///         The file is generated, committed as <c>Vion.Contracts/Events/events.schema.json</c>, and checked against a

@@ -68,9 +68,11 @@ namespace Vion.Contracts.Test.Events.MeshToCloud
         public void ExportTheValueAsFreeForm()
         {
             // JsonSchemaExporter writes the any-schema `true` for a JsonNode; cloud-api layers x-vion-valueSchema on it.
-            var jsonSchema = EventsSchemaExporter.Build()["payloads"]!["MeshToCloud.PropertiesStatePayload"]!["jsonSchema"]!;
-            var value = jsonSchema["properties"]!["propertiesState"]!["items"]!["properties"]!["value"]!;
+            var export = EventsSchemaExporter.Build();
+            var items = export["payloads"]!["MeshToCloud.PropertiesStatePayload"]!["jsonSchema"]!["properties"]!["propertiesState"]!["items"]!;
+            var value = export["$defs"]!["MeshToCloud.PropertyState"]!["properties"]!["value"]!;
 
+            Assert.AreEqual("#/$defs/MeshToCloud.PropertyState", (string)items["$ref"]!);
             Assert.AreEqual(JsonValueKind.True, value.GetValueKind());
         }
 
