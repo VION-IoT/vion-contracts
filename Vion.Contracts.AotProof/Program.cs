@@ -1,7 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using Vion.Contracts.Events;
+using Vion.Contracts.Events.MeshToCloud;
+using Vion.Contracts.Events.ServiceProviderToMesh;
 using Vion.Contracts.Hw;
 using Vion.Contracts.Hw.Ai;
 using Vion.Contracts.Hw.Ao;
@@ -12,9 +17,10 @@ using Vion.Contracts.Hw.Modbus;
 namespace Vion.Contracts.AotProof
 {
     /// <summary>
-    ///     Drives every <c>hw/*</c> payload and both Modbus enums through <see cref="HwJsonContext" /> and asserts the
-    ///     result, so that publishing this project with <c>PublishAot=true</c> and running the binary is a proof that
-    ///     the contracts are usable from a NativeAOT hardware-abstraction layer.
+    ///     Drives every <c>hw/*</c> payload and both Modbus enums through <see cref="HwJsonContext" />, and a set of
+    ///     <c>Events/*</c> payloads through <see cref="EventsJsonContext" />, and asserts the result, so that publishing
+    ///     this project with <c>PublishAot=true</c> and running the binary is a proof that both contexts are usable from a
+    ///     NativeAOT consumer — the hardware-abstraction layers for the first, mesh for the second.
     ///     <para>
     ///         Every call goes through a <see cref="JsonTypeInfo{T}" /> off <see cref="HwJsonContext.Default" /> — the
     ///         overloads that take only <c>JsonSerializerOptions</c> are the reflection-based ones and are exactly what
@@ -36,6 +42,7 @@ namespace Vion.Contracts.AotProof
             CheckHwStatePayloads();
             CheckModbusPayloads();
             CheckEnums();
+            CheckEventsPayloads();
 
             if (Failures.Count > 0)
             {
@@ -48,7 +55,7 @@ namespace Vion.Contracts.AotProof
                 return 1;
             }
 
-            Console.WriteLine("AOT proof passed: 10 records + 2 enums round-tripped through HwJsonContext.");
+            Console.WriteLine("AOT proof passed: 10 records + 2 enums round-tripped through HwJsonContext, 5 payloads through EventsJsonContext.");
 
             return 0;
         }
@@ -103,6 +110,52 @@ namespace Vion.Contracts.AotProof
             {
                 CheckEnumMember(responseCode, HwJsonContext.Default.ModbusResponseCode);
             }
+        }
+
+        private static void CheckEventsPayloads()
+        {
+            // The client-facing payload: a JsonNode value of every kind, written verbatim.
+            Check(new PropertiesStatePayload([
+                      new PropertyState("Setpoint", JsonNode.Parse("{\"Min\":5,\"max\":30.5}")),
+                      new PropertyState("Power", JsonValue.Create(11.25)),
+                      new PropertyState("Mode", JsonValue.Create("Eco")),
+                      new PropertyState("Fault", null),
+                  ]),
+                  EventsJsonContext.Default.PropertiesStatePayload,
+                  "{\"propertiesState\":[{\"propertyIdentifier\":\"Setpoint\",\"value\":{\"Min\":5,\"max\":30.5}},{\"propertyIdentifier\":\"Power\",\"value\":11.25},{\"propertyIdentifier\":\"Mode\",\"value\":\"Eco\"},{\"propertyIdentifier\":\"Fault\",\"value\":null}]}",
+                  SamePropertiesState);
+
+            // Enum-carrying payloads: the JsonStringEnumConverter<TEnum> instances listed on the context, not attributes
+            // on the enum types, are what make these member names — a non-generic converter would only fail here.
+            Check(new LogicConfigurationLoadFailedPayload(LogicConfigurationLoadFailureReason.CorruptConfig),
+                  EventsJsonContext.Default.LogicConfigurationLoadFailedPayload,
+                  "{\"reason\":\"CorruptConfig\"}");
+
+            Check(new SystemServiceStatePayload("remote-console", "session-1", ServiceState.Started),
+                  EventsJsonContext.Default.SystemServiceStatePayload,
+                  "{\"serviceName\":\"remote-console\",\"instanceId\":\"session-1\",\"state\":\"Started\",\"information\":null}");
+
+            Check(new BridgingDeclarationPayload([new TopicDeclaration("tenant/installation-b/#", AccessType.Publish)]),
+                  EventsJsonContext.Default.BridgingDeclarationPayload,
+                  "{\"declarations\":[{\"topicFilter\":\"tenant/installation-b/#\",\"access\":\"Publish\"}]}",
+                  (left, right) => left.Declarations.SequenceEqual(right.Declarations));
+
+            // An object-typed value: written by its runtime type, read back as a JsonElement and written again — both
+            // need metadata the context registers explicitly.
+            Check(new AlarmStateChangedPayload
+                  {
+                      AutomationId = new Guid("6f9619ff-8b86-d011-b42d-00c04fc964ff"),
+                      Identifier = "overTemperature",
+                      AlarmParameters =
+                      [
+                          new AlarmStateChangedPayload.AlarmParameter("temperature", 81.5),
+                          new AlarmStateChangedPayload.AlarmParameter("active", true),
+                      ],
+                  },
+                  EventsJsonContext.Default.AlarmStateChangedPayload,
+                  "{\"automationId\":\"6f9619ff-8b86-d011-b42d-00c04fc964ff\",\"identifier\":\"overTemperature\",\"alarmParameters\":[{\"name\":\"temperature\",\"value\":81.5},{\"name\":\"active\",\"value\":true}]}",
+                  (left, right) => left.AutomationId == right.AutomationId && left.Identifier == right.Identifier && left.AlarmParameters!.Select(parameter => parameter.Name)
+                                       .SequenceEqual(right.AlarmParameters!.Select(parameter => parameter.Name)));
         }
 
         private static void CheckEnumMember<TEnum>(TEnum member, JsonTypeInfo<TEnum> typeInfo)
@@ -170,6 +223,15 @@ namespace Vion.Contracts.AotProof
         private static bool SameSetRequest(SetModbusPayload left, SetModbusPayload right)
         {
             return left.FunctionCode == right.FunctionCode && left.UnitIdentifier == right.UnitIdentifier && left.Address == right.Address && SameBytes(left.Data, right.Data);
+        }
+
+        // Records compare their List and JsonNode members by reference, so the states are compared by value.
+        private static bool SamePropertiesState(PropertiesStatePayload left, PropertiesStatePayload right)
+        {
+            return left.PropertiesState.Count == right.PropertiesState.Count && left.PropertiesState
+                                                                                    .Zip(right.PropertiesState)
+                                                                                    .All(pair => pair.First.PropertyIdentifier == pair.Second.PropertyIdentifier &&
+                                                                                                 JsonNode.DeepEquals(pair.First.Value, pair.Second.Value));
         }
 
         private static bool SameBytes(byte[]? left, byte[]? right)

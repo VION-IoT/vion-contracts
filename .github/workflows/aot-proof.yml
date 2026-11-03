@@ -1,7 +1,7 @@
 name: NativeAOT proof
 # Publishes Vion.Contracts.AotProof with NativeAOT and runs the produced binary, proving that
 # Vion.Contracts.Hw.HwJsonContext is usable from the NativeAOT hardware-abstraction layers that
-# consume these contracts. See Vion.Contracts.AotProof/Vion.Contracts.AotProof.csproj.
+# consume these contracts, and Vion.Contracts.Events.EventsJsonContext from a NativeAOT mesh. See Vion.Contracts.AotProof/Vion.Contracts.AotProof.csproj.
 #
 # This is deliberately a separate workflow from publish.yml: the pack/test/style gate lives in the
 # shared VION-IoT/shared-workflows publish-nuget.yml and cannot host a RID-specific publish step.
@@ -85,7 +85,7 @@ jobs:
         # them would slip past. TrimmerSingleWarn=false in the csproj keeps them from appearing.
         run: |
           if grep -E 'IL2026|IL3050|IL2104|IL3053' publish.log; then
-            echo "::error::NativeAOT publish reported an AOT/trim diagnostic — the Hw contracts are not AOT-safe."
+            echo "::error::NativeAOT publish reported an AOT/trim diagnostic — the JSON contracts are not AOT-safe."
             exit 1
           fi
           echo "No IL2026 / IL3050 reported."
