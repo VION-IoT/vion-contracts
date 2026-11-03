@@ -31,4 +31,10 @@
         <PackageReference Include="System.Text.Json" Version="10.0.7"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <!-- The committed JSON Schema export of the Events/* payloads, read through EventsSchemaExport.Open(). The
+             LogicalName is pinned so the resource name does not depend on the folder the file sits in. -->
+        <EmbeddedResource Include="Events\events.schema.json" LogicalName="Vion.Contracts.Events.events.schema.json"/>
+    </ItemGroup>
+
 </Project>

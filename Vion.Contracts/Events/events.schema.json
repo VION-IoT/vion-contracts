@@ -1,0 +1,1821 @@
+{
+  "$defs": {
+    "CloudToMesh.Automations.ActionType": {
+      "enum": [
+        "SetProperty",
+        "RaiseAlarm",
+        "ResolveAlarm"
+      ]
+    },
+    "CloudToMesh.Automations.Automation": {
+      "type": "object",
+      "properties": {
+        "onActivate": {
+          "$ref": "#/$defs/CloudToMesh.Automations.Automation.Activation"
+        },
+        "schedules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CloudToMesh.Automations.Automation.Schedule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "automationType": {
+          "$ref": "#/$defs/CloudToMesh.Automations.AutomationType"
+        },
+        "triggerType": {
+          "$ref": "#/$defs/CloudToMesh.Automations.TriggerType"
+        },
+        "onDeactivate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CloudToMesh.Automations.Automation.Activation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conditionConfig": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CloudToMesh.Automations.Automation.Condition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hysteresisConfig": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CloudToMesh.Automations.Automation.Hysteresis"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "onActivate",
+        "name"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Activation": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CloudToMesh.Automations.Automation.Activation.Action"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "timingConfig": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CloudToMesh.Automations.Automation.Activation.Timing"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "actions"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Activation.Action": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/CloudToMesh.Automations.ActionType"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "value": true,
+        "schema": true
+      },
+      "required": [
+        "identifier"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Activation.Timing": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/CloudToMesh.Automations.TimingType"
+        },
+        "unit": {
+          "$ref": "#/$defs/CloudToMesh.Automations.TimingUnit"
+        },
+        "value": {
+          "type": "integer"
+        }
+      }
+    },
+    "CloudToMesh.Automations.Automation.Condition": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CloudToMesh.Automations.Automation.Condition.Parameter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "expression",
+        "parameters"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Condition.Parameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/CloudToMesh.Automations.ParameterType"
+        },
+        "schema": true
+      },
+      "required": [
+        "name",
+        "identifier"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Hysteresis": {
+      "type": "object",
+      "properties": {
+        "raise": {
+          "type": "string"
+        },
+        "clear": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "raise",
+        "clear"
+      ]
+    },
+    "CloudToMesh.Automations.Automation.Schedule": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/CloudToMesh.Automations.ScheduleType"
+        },
+        "value": {
+          "type": "string"
+        },
+        "timeZone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "CloudToMesh.Automations.AutomationType": {
+      "enum": [
+        "Rule",
+        "Alarm",
+        "Schedule"
+      ]
+    },
+    "CloudToMesh.Automations.ParameterType": {
+      "enum": [
+        "Property",
+        "MeasuringPoint"
+      ]
+    },
+    "CloudToMesh.Automations.ScheduleType": {
+      "enum": [
+        "OneTime",
+        "Recurring"
+      ]
+    },
+    "CloudToMesh.Automations.TimingType": {
+      "enum": [
+        "Sustain"
+      ]
+    },
+    "CloudToMesh.Automations.TimingUnit": {
+      "enum": [
+        "Seconds",
+        "Minutes",
+        "Hours"
+      ]
+    },
+    "CloudToMesh.Automations.TriggerType": {
+      "enum": [
+        "Condition",
+        "Schedule"
+      ]
+    },
+    "CloudToMesh.ObjectSyncStatus": {
+      "type": "object",
+      "properties": {
+        "syncStatusId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "$ref": "#/$defs/MeshToCloud.SyncStatus"
+        }
+      }
+    },
+    "CloudToMesh.PeerNetworkState": {
+      "type": "object",
+      "properties": {
+        "gatewayId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "installationTopic": {
+          "type": "string"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "port": {
+          "type": "integer"
+        }
+      }
+    },
+    "CloudToMesh.RegistrationStatus": {
+      "enum": [
+        "Pending",
+        "Denied",
+        "Accepted"
+      ]
+    },
+    "CloudToMesh.ServiceArgument": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "CloudToMesh.ServiceProviderRegistration": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/CloudToMesh.RegistrationStatus"
+        }
+      },
+      "required": [
+        "identifier",
+        "secret",
+        "status"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.ContractMapping": {
+      "type": "object",
+      "properties": {
+        "logicBlockInstanceId": {
+          "type": "string"
+        },
+        "contractIdentifier": {
+          "type": "string"
+        },
+        "installationTopic": {
+          "type": "string"
+        },
+        "mappedServiceProviderIdentifier": {
+          "type": "string"
+        },
+        "mappedServiceIdentifier": {
+          "type": "string"
+        },
+        "mappedContractIdentifier": {
+          "type": "string"
+        },
+        "mappedInstallationTopic": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "logicBlockInstanceId",
+        "contractIdentifier",
+        "installationTopic",
+        "mappedServiceProviderIdentifier",
+        "mappedServiceIdentifier",
+        "mappedContractIdentifier",
+        "mappedInstallationTopic"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.InstantiationParameterValue": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "value": true
+      },
+      "required": [
+        "identifier"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.InterfaceMapping": {
+      "type": "object",
+      "properties": {
+        "logicBlockInstanceId": {
+          "type": "string"
+        },
+        "interfaceIdentifier": {
+          "type": "string"
+        },
+        "installationTopic": {
+          "type": "string"
+        },
+        "mappedLogicBlockInstanceId": {
+          "type": "string"
+        },
+        "mappedInterfaceIdentifier": {
+          "type": "string"
+        },
+        "mappedInstallationTopic": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "logicBlockInstanceId",
+        "interfaceIdentifier",
+        "installationTopic",
+        "mappedLogicBlockInstanceId",
+        "mappedInterfaceIdentifier",
+        "mappedInstallationTopic"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.LogicBlockInstance": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "packageId": {
+          "type": "string"
+        },
+        "packageVersion": {
+          "type": "string"
+        },
+        "typeFullName": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.ServiceIdMapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "instantiationParameterValues": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.InstantiationParameterValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "packageId",
+        "packageVersion",
+        "typeFullName",
+        "name",
+        "services"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.LogicBlockLibrarySource": {
+      "type": "object",
+      "properties": {
+        "packageId": {
+          "type": "string"
+        },
+        "packageVersion": {
+          "type": "string"
+        },
+        "downloadUrl": {
+          "type": "string"
+        },
+        "downloadUrlExpiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "packageId",
+        "packageVersion",
+        "downloadUrl",
+        "downloadUrlExpiresAt"
+      ]
+    },
+    "CloudToMesh.SetLogicConfigurationPayload.ServiceIdMapping": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "serviceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier",
+        "serviceId"
+      ]
+    },
+    "CloudToMesh.Subscription": {
+      "type": "object",
+      "properties": {
+        "serviceProviderIdentifier": {
+          "type": "string"
+        },
+        "serviceIdentifier": {
+          "type": "string"
+        },
+        "propertyIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "required": [
+        "serviceProviderIdentifier",
+        "serviceIdentifier",
+        "propertyIdentifiers"
+      ]
+    },
+    "MeshToCloud.AlarmStateChangedPayload.AlarmParameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": true
+      }
+    },
+    "MeshToCloud.Component": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "connectionStatus": {
+          "$ref": "#/$defs/MeshToCloud.ConnectionStatus"
+        },
+        "healthStatus": {
+          "$ref": "#/$defs/MeshToCloud.HealthStatus"
+        },
+        "since": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subComponents": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/MeshToCloud.Component"
+          }
+        }
+      }
+    },
+    "MeshToCloud.ConnectionStatus": {
+      "enum": [
+        "Unknown",
+        "Offline",
+        "Online"
+      ]
+    },
+    "MeshToCloud.HealthStatus": {
+      "enum": [
+        "Unknown",
+        "Unhealthy",
+        "Healthy"
+      ]
+    },
+    "MeshToCloud.MeasuringPointsStatePayload.Service": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "measuringPoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MeshToCloud.MeasuringPointsStatePayload.Service.MeasuringPoint"
+          }
+        }
+      },
+      "required": [
+        "identifier",
+        "measuringPoints"
+      ]
+    },
+    "MeshToCloud.MeasuringPointsStatePayload.Service.MeasuringPoint": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "value": true
+      }
+    },
+    "MeshToCloud.MeasuringPointsStatePayload.ServiceProvider": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MeshToCloud.MeasuringPointsStatePayload.Service"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "identifier",
+        "services"
+      ]
+    },
+    "MeshToCloud.PropertyState": {
+      "type": "object",
+      "properties": {
+        "propertyIdentifier": {
+          "type": "string"
+        },
+        "value": true
+      }
+    },
+    "MeshToCloud.ServiceProviderDeclarationPayload.ContractInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier",
+        "type"
+      ]
+    },
+    "MeshToCloud.ServiceProviderDeclarationPayload.MeasuringPointInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "schema": true,
+        "presentation": true,
+        "runtime": true
+      },
+      "required": [
+        "identifier",
+        "schema"
+      ]
+    },
+    "MeshToCloud.ServiceProviderDeclarationPayload.PropertyInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "schema": true,
+        "presentation": true,
+        "runtime": true
+      },
+      "required": [
+        "identifier",
+        "schema"
+      ]
+    },
+    "MeshToCloud.ServiceProviderDeclarationPayload.ServiceInfo": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "annotations": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "properties": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MeshToCloud.ServiceProviderDeclarationPayload.PropertyInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "measuringPoints": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MeshToCloud.ServiceProviderDeclarationPayload.MeasuringPointInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "contracts": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MeshToCloud.ServiceProviderDeclarationPayload.ContractInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "identifier"
+      ]
+    },
+    "MeshToCloud.ServiceState": {
+      "enum": [
+        "Started",
+        "Stopped",
+        "Failed"
+      ]
+    },
+    "MeshToCloud.SeverityLevel": {
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ]
+    },
+    "MeshToCloud.SyncStatus": {
+      "enum": [
+        "Pending",
+        "InProgress",
+        "Completed",
+        "Failed"
+      ]
+    },
+    "MeshToCloud.SystemEventSource": {
+      "enum": [
+        "Unknown",
+        "Alarm",
+        "Rule",
+        "Schedule",
+        "DiskSpaceMonitor",
+        "ServiceProvider",
+        "SystemService",
+        "SystemControl",
+        "LogicConfiguration",
+        "Bridging"
+      ]
+    },
+    "MeshToCloud.SystemEventStatus": {
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Unknown"
+      ]
+    },
+    "MeshToCloud.SystemEventType": {
+      "enum": [
+        "Unknown",
+        "SetProperty",
+        "GetProperty",
+        "GetMeasuringPoint",
+        "RaiseAlarm",
+        "ResolveAlarm",
+        "AutomationUpserted",
+        "AutomationDeleted",
+        "AutomationsSynced",
+        "AutomationsInitialized",
+        "Monitoring",
+        "ServiceProviderRegistered",
+        "ServiceProviderAccepted",
+        "ServiceProviderDenied",
+        "ServiceProviderDeleted",
+        "ServiceProvidersSynced",
+        "ServiceProviderRestarted",
+        "SystemServiceStarted",
+        "SystemServiceStopped",
+        "MeshRestarted",
+        "BrokerRestarted",
+        "LogicConfigurationApplied",
+        "PeersSynced",
+        "BridgingDeclarationAccepted",
+        "BridgingDeclarationRejected",
+        "BridgeApplied",
+        "BridgeRemoved"
+      ]
+    },
+    "Microsoft.Extensions.Logging.LogLevel": {
+      "enum": [
+        "Trace",
+        "Debug",
+        "Information",
+        "Warning",
+        "Error",
+        "Critical",
+        "None"
+      ]
+    },
+    "ServiceProviderToMesh.AccessType": {
+      "enum": [
+        "Publish"
+      ]
+    },
+    "ServiceProviderToMesh.LogicConfigurationLoadFailureReason": {
+      "enum": [
+        "CorruptConfig",
+        "MissingConfig"
+      ]
+    },
+    "ServiceProviderToMesh.TopicDeclaration": {
+      "type": "object",
+      "properties": {
+        "topicFilter": {
+          "type": "string"
+        },
+        "access": {
+          "$ref": "#/$defs/ServiceProviderToMesh.AccessType"
+        }
+      }
+    }
+  },
+  "payloads": {
+    "CloudToMesh.Automations.AutomationsRetrievedPayload": {
+      "schema": "AutomationsRetrievedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "automations": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.Automations.Automation"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "syncStatusByObjectId": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/CloudToMesh.ObjectSyncStatus"
+            }
+          }
+        },
+        "required": [
+          "automations",
+          "syncStatusByObjectId"
+        ]
+      }
+    },
+    "CloudToMesh.Automations.UpsertAutomationPayload": {
+      "schema": "UpsertAutomationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "automation": {
+            "$ref": "#/$defs/CloudToMesh.Automations.Automation"
+          }
+        },
+        "required": [
+          "automation"
+        ]
+      }
+    },
+    "CloudToMesh.InstallationTopicRetrievedPayload": {
+      "schema": "InstallationTopicRetrievedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "installationTopic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installationTopic"
+        ]
+      }
+    },
+    "CloudToMesh.PeersNetworkStatePayload": {
+      "schema": "PeersNetworkStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "peers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/CloudToMesh.PeerNetworkState"
+            }
+          }
+        },
+        "required": [
+          "peers"
+        ]
+      }
+    },
+    "CloudToMesh.RestartPayload": {
+      "schema": "RestartPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "CloudToMesh.ServiceProviderRegistrationAcceptedPayload": {
+      "schema": "ServiceProviderRegistrationAcceptedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      }
+    },
+    "CloudToMesh.ServiceProviderRegistrationDeletedPayload": {
+      "schema": "ServiceProviderRegistrationDeletedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "CloudToMesh.ServiceProviderRegistrationDeniedPayload": {
+      "schema": "ServiceProviderRegistrationDeniedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "secret",
+          "reason"
+        ]
+      }
+    },
+    "CloudToMesh.ServiceProviderRegistrationsRetrievedPayload": {
+      "schema": "ServiceProviderRegistrationsRetrievedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "registrations": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.ServiceProviderRegistration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "syncStatusByObjectId": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/CloudToMesh.ObjectSyncStatus"
+            }
+          }
+        },
+        "required": [
+          "registrations",
+          "syncStatusByObjectId"
+        ]
+      }
+    },
+    "CloudToMesh.SetLogLevelPayload": {
+      "schema": "SetLogLevelPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "logLevel": {
+            "$ref": "#/$defs/Microsoft.Extensions.Logging.LogLevel"
+          }
+        },
+        "required": [
+          "logLevel"
+        ]
+      }
+    },
+    "CloudToMesh.SetLogicConfigurationPayload": {
+      "schema": "SetLogicConfigurationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "logicBlockInstances": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.LogicBlockInstance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "interfaceMappings": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.InterfaceMapping"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "contractMappings": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.ContractMapping"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "logicBlockLibrarySources": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.SetLogicConfigurationPayload.LogicBlockLibrarySource"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "logicBlockInstances",
+          "interfaceMappings",
+          "contractMappings"
+        ]
+      }
+    },
+    "CloudToMesh.SetPropertyPayload": {
+      "schema": "SetPropertyPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": true
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "CloudToMesh.StartSystemServicePayload": {
+      "schema": "StartSystemServicePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "instanceId": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/CloudToMesh.ServiceArgument"
+            }
+          }
+        },
+        "required": [
+          "instanceId",
+          "arguments"
+        ]
+      }
+    },
+    "CloudToMesh.StopSystemServicePayload": {
+      "schema": "StopSystemServicePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "instanceId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instanceId"
+        ]
+      }
+    },
+    "CloudToMesh.SubscribePropertiesPayload": {
+      "schema": "SubscribePropertiesPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.Subscription"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "subscriptions"
+        ]
+      }
+    },
+    "CloudToMesh.UnsubscribePropertiesPayload": {
+      "schema": "UnsubscribePropertiesPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CloudToMesh.Subscription"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "subscriptions"
+        ]
+      }
+    },
+    "MeshToCloud.AlarmCloseAllPayload": {
+      "schema": "AlarmCloseAllPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "MeshToCloud.AlarmStateChangedPayload": {
+      "schema": "AlarmStateChangedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "automationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "alarmParameters": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/$defs/MeshToCloud.AlarmStateChangedPayload.AlarmParameter"
+            }
+          }
+        },
+        "required": [
+          "automationId",
+          "identifier"
+        ]
+      }
+    },
+    "MeshToCloud.CertificateStatePayload": {
+      "schema": "CertificateStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "notBefore": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notAfter": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "notBefore",
+          "notAfter"
+        ]
+      }
+    },
+    "MeshToCloud.GetAutomationsPayload": {
+      "schema": "GetAutomationsPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "MeshToCloud.GetInstallationTopicPayload": {
+      "schema": "GetInstallationTopicPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "MeshToCloud.GetLogicConfigurationPayload": {
+      "schema": "GetLogicConfigurationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "appliedHash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "appliedHash"
+        ]
+      }
+    },
+    "MeshToCloud.GetPeersNetworkStatePayload": {
+      "schema": "GetPeersNetworkStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "MeshToCloud.GetServiceProviderRegistrationsPayload": {
+      "schema": "GetServiceProviderRegistrationsPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ]
+      }
+    },
+    "MeshToCloud.LogLevelStatePayload": {
+      "schema": "LogLevelStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "logLevel": {
+            "$ref": "#/$defs/Microsoft.Extensions.Logging.LogLevel"
+          }
+        },
+        "required": [
+          "logLevel"
+        ]
+      }
+    },
+    "MeshToCloud.MeasuringPointsStatePayload": {
+      "schema": "MeasuringPointsStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "serviceProviders": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MeshToCloud.MeasuringPointsStatePayload.ServiceProvider"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "measuredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "serviceProviders",
+          "measuredAtUtc"
+        ]
+      }
+    },
+    "MeshToCloud.NetworkStatePayload": {
+      "schema": "NetworkStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "port": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "addresses",
+          "port"
+        ]
+      }
+    },
+    "MeshToCloud.PropertiesStatePayload": {
+      "schema": "PropertiesStatePayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "propertiesState": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/MeshToCloud.PropertyState"
+            }
+          }
+        }
+      }
+    },
+    "MeshToCloud.ServiceProviderDeclarationPayload": {
+      "schema": "ServiceProviderDeclarationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MeshToCloud.ServiceProviderDeclarationPayload.ServiceInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "annotations": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "services"
+        ]
+      }
+    },
+    "MeshToCloud.ServiceProviderRegistrationPayload": {
+      "schema": "ServiceProviderRegistrationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret"
+        ]
+      }
+    },
+    "MeshToCloud.SetPropertyResponsePayload": {
+      "schema": "SetPropertyResponsePayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "serviceProviderIdentifier": {
+            "type": "string"
+          },
+          "serviceIdentifier": {
+            "type": "string"
+          },
+          "propertyIdentifier": {
+            "type": "string"
+          },
+          "value": true
+        }
+      }
+    },
+    "MeshToCloud.SyncStatusUpdatedEventPayload": {
+      "schema": "SyncStatusUpdatedEventPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/$defs/MeshToCloud.SyncStatus"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "feedback": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "MeshToCloud.SystemEventPayload": {
+      "schema": "SystemEventPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "objectId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correlationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "systemEventType": {
+            "$ref": "#/$defs/MeshToCloud.SystemEventType"
+          },
+          "systemEventSource": {
+            "$ref": "#/$defs/MeshToCloud.SystemEventSource"
+          },
+          "status": {
+            "$ref": "#/$defs/MeshToCloud.SystemEventStatus"
+          },
+          "level": {
+            "$ref": "#/$defs/MeshToCloud.SeverityLevel"
+          },
+          "data": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dateTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "MeshToCloud.SystemHealthStatusPayload": {
+      "schema": "SystemHealthStatusPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/MeshToCloud.Component"
+            }
+          }
+        },
+        "required": [
+          "components"
+        ]
+      }
+    },
+    "MeshToCloud.SystemServiceStatePayload": {
+      "schema": "SystemServiceStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "serviceName": {
+            "type": "string"
+          },
+          "instanceId": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/$defs/MeshToCloud.ServiceState"
+          },
+          "information": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "default": null
+          }
+        },
+        "required": [
+          "serviceName",
+          "instanceId",
+          "state"
+        ]
+      }
+    },
+    "MeshToServiceProvider.ServiceProviderRegistrationAcceptedPayload": {
+      "schema": "ServiceProviderRegistrationAcceptedPayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "installationTopic": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "MeshToServiceProvider.ServiceProviderRegistrationDeniedPayload": {
+      "schema": "ServiceProviderRegistrationDeniedPayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "ServiceProviderToMesh.BridgingDeclarationPayload": {
+      "schema": "BridgingDeclarationPayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "declarations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ServiceProviderToMesh.TopicDeclaration"
+            }
+          }
+        }
+      }
+    },
+    "ServiceProviderToMesh.ComponentHealthStatusPayload": {
+      "schema": "ComponentHealthStatusPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "component": {
+            "$ref": "#/$defs/MeshToCloud.Component"
+          }
+        },
+        "required": [
+          "component"
+        ]
+      }
+    },
+    "ServiceProviderToMesh.LogicConfigurationLoadFailedPayload": {
+      "schema": "LogicConfigurationLoadFailedPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "reason": {
+            "$ref": "#/$defs/ServiceProviderToMesh.LogicConfigurationLoadFailureReason"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      }
+    },
+    "ServiceProviderToMesh.MeasuringPointStatePayload": {
+      "schema": "MeasuringPointStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": true
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "ServiceProviderToMesh.PropertySetResponsePayload": {
+      "schema": "PropertySetResponsePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": true
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "ServiceProviderToMesh.PropertyStatePayload": {
+      "schema": "PropertyStatePayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "value": true
+        },
+        "required": [
+          "value"
+        ]
+      }
+    },
+    "ServiceProviderToMesh.ServiceProviderRegistrationRequestPayload": {
+      "schema": "ServiceProviderRegistrationRequestPayload",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {
+          "serviceProviderIdentifier": {
+            "type": "string"
+          },
+          "secret": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

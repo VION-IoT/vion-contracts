@@ -23,9 +23,9 @@ dotnet test Vion.Contracts.sln
 Targets `netstandard2.1`. Standard .NET tooling — no special harness.
 
 `Vion.Contracts.AotProof` is the third project in the solution: a `net10.0`, non-packable
-console app that round-trips every `Hw/*` payload through `HwJsonContext` and asserts the
-result. `dotnet build` / `dotnet test` cover it like anything else, but the point of it is the
-**published** binary — NativeAOT needs a platform linker, so it can only be published on a
+console app that round-trips every `Hw/*` payload through `HwJsonContext`, and a set of
+`Events/*` payloads through `EventsJsonContext`, and asserts the result. `dotnet build` /
+`dotnet test` cover it like anything else, but the point of it is the **published** binary — NativeAOT needs a platform linker, so it can only be published on a
 machine that has one (clang on Linux, the Visual Studio C++ workload on Windows). CI does it
 on Linux: [`.github/workflows/aot-proof.yml`](.github/workflows/aot-proof.yml). A JIT test
 proves nothing here — a reflection-based converter passes JIT happily and only fails once
@@ -60,7 +60,7 @@ sparingly and locally, never to opt a whole file out.
 | Path | Holds |
 |------|-------|
 | `Vion.Contracts/Mqtt/` | Topic constants, user-property names, MIME types |
-| `Vion.Contracts/Events/` | JSON payload classes per direction (CloudToMesh, MeshToCloud, MeshToServiceProvider, ServiceProviderToMesh) |
+| `Vion.Contracts/Events/` | JSON payload classes per direction (CloudToMesh, MeshToCloud, MeshToServiceProvider, ServiceProviderToMesh) + `EventsJsonContext` + the generated `events.schema.json` |
 | `Vion.Contracts/Hw/` | JSON payload classes for the SP↔dale hardware contracts (Ai, Ao, Di, Do, Modbus) + `HwJsonContext` |
 | `Vion.Contracts/FlatBuffers/` | `.fbs` schemas (Common, Sw, Remote, System) |
 | `Vion.Contracts/FlatBuffers.Generated/` | Generated C# from `.fbs` — **regenerated**, see below |
@@ -95,6 +95,15 @@ sparingly and locally, never to opt a whole file out.
 - Pick the direction folder; the folder name is the contract direction
   and consumers grep on it.
 - Implement `IMessage` if the payload is a top-level envelope.
+- **Register every new payload in `Events/EventsJsonContext.cs`**, and a
+  `JsonStringEnumConverter<TEnum>` under its `Converters` for every new enum a payload
+  carries — on the context, never as `[JsonConverter]` on the enum type: these enums
+  are also serialized by consumers with their own options, and an attribute would change
+  their wire form too. Tests in `Vion.Contracts.Test/Events/` fail on a payload or enum
+  left out.
+- **Then regenerate the schema export**: `pwsh scripts/export-event-schemas.ps1` rewrites
+  `Events/events.schema.json` (embedded in the package, read through
+  `EventsSchemaExport.Open()`). Review its diff — a changed entry is a changed wire shape.
 
 **Hardware payloads** (in `Hw/<Area>/`, namespace `Vion.Contracts.Hw.<Area>`):
 
@@ -148,8 +157,12 @@ template constant and document the segments in a comment.
 - A breaking change requires a major-version bump and coordinated
   consumer rollout.
 
-There is no CI schema-diff check today; the convention relies on PR
-review. Treat any apparent shape change as a major-version question.
+For `Events/*`, CI diffs the schemas: `EventsSchemaExportShould` fails `dotnet test` when
+`Events/events.schema.json` differs from a fresh export of `EventsJsonContext`, so a shape
+change cannot land without its export diff in the PR. It catches the change; deciding whether
+it is additive is still PR review. `Hw/*`, FlatBuffers and the MQTT constants have no
+schema-diff check — there the convention relies on PR review alone. Treat any apparent shape
+change as a major-version question.
 
 ## No runtime side effects
 

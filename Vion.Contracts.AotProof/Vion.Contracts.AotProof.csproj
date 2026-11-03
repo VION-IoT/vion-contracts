@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <!--
-        The NativeAOT proof for the Hw JSON contracts. Vion.Contracts itself is netstandard2.1 and cannot be
-        published, so the only way to show that HwJsonContext survives NativeAOT is a net10.0 executable that
-        references it and gets published with PublishAot.
+        The NativeAOT proof for the JSON contracts. Vion.Contracts itself is netstandard2.1 and cannot be
+        published, so the only way to show that HwJsonContext and EventsJsonContext survive NativeAOT is a net10.0
+        executable that references them and gets published with PublishAot.
 
         Publish it for the RID of the machine you are on, then run the produced binary:
             dotnet publish Vion.Contracts.AotProof -r linux-x64 -c Release
