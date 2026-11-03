@@ -35,14 +35,7 @@ namespace Vion.Contracts.Test.Events
         ///     Every top-level payload under <c>Events/*</c>: a public, non-nested type in a direction namespace whose name
         ///     ends in <c>Payload</c> — the naming rule CLAUDE.md sets for every payload.
         /// </summary>
-        public static IReadOnlyList<Type> PayloadTypes { get; } = typeof(EventsJsonContext).Assembly
-                                                                                           .GetExportedTypes()
-                                                                                           .Where(type => !type.IsNested &&
-                                                                                                          type.Namespace?.StartsWith(EventsNamespace + ".",
-                                                                                                                                     StringComparison.Ordinal) == true &&
-                                                                                                          type.Name.EndsWith("Payload", StringComparison.Ordinal))
-                                                                                           .OrderBy(Key, StringComparer.Ordinal)
-                                                                                           .ToList();
+        public static IReadOnlyList<Type> PayloadTypes { get; } = FindPayloadTypes();
 
         /// <summary>The export's key for a payload: <c>&lt;Direction&gt;.&lt;TypeName&gt;</c>.</summary>
         public static string Key(Type payloadType)
@@ -63,8 +56,9 @@ namespace Vion.Contracts.Test.Events
 
         public static JsonTypeInfo TypeInfo(Type payloadType)
         {
-            return EventsJsonContext.Default.GetTypeInfo(payloadType) ??
-                   throw new InvalidOperationException($"{payloadType.FullName} is not registered in {nameof(EventsJsonContext)}.");
+            var typeInfo = EventsJsonContext.Default.GetTypeInfo(payloadType);
+
+            return typeInfo ?? throw new InvalidOperationException($"{payloadType.FullName} is not registered.");
         }
 
         public static JsonObject Build()
@@ -100,6 +94,24 @@ namespace Vion.Contracts.Test.Events
             }
 
             throw new InvalidOperationException($"No Vion.Contracts.sln above {AppContext.BaseDirectory}.");
+        }
+
+        private static List<Type> FindPayloadTypes()
+        {
+            var exported = typeof(EventsJsonContext).Assembly.GetExportedTypes();
+            var payloads = exported.Where(IsPayload);
+
+            return payloads.OrderBy(Key, StringComparer.Ordinal).ToList();
+        }
+
+        private static bool IsPayload(Type type)
+        {
+            if (type.IsNested || !type.Name.EndsWith("Payload", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return type.Namespace?.StartsWith(EventsNamespace + ".", StringComparison.Ordinal) == true;
         }
     }
 }
