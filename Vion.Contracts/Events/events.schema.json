@@ -873,7 +873,7 @@
     }
   },
   "payloads": {
-    "CloudToMesh.AutomationsRetrievedPayload": {
+    "CloudToMesh.Automations.AutomationsRetrievedPayload": {
       "schema": "AutomationsRetrievedPayload",
       "jsonSchema": {
         "type": [
@@ -904,6 +904,23 @@
         "required": [
           "automations",
           "syncStatusByObjectId"
+        ]
+      }
+    },
+    "CloudToMesh.Automations.UpsertAutomationPayload": {
+      "schema": "UpsertAutomationPayload",
+      "jsonSchema": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "automation": {
+            "$ref": "#/$defs/CloudToMesh.Automations.Automation"
+          }
+        },
+        "required": [
+          "automation"
         ]
       }
     },
@@ -1229,23 +1246,6 @@
         },
         "required": [
           "subscriptions"
-        ]
-      }
-    },
-    "CloudToMesh.UpsertAutomationPayload": {
-      "schema": "UpsertAutomationPayload",
-      "jsonSchema": {
-        "type": [
-          "object",
-          "null"
-        ],
-        "properties": {
-          "automation": {
-            "$ref": "#/$defs/CloudToMesh.Automations.Automation"
-          }
-        },
-        "required": [
-          "automation"
         ]
       }
     },

@@ -41,14 +41,6 @@ namespace Vion.Contracts.Test.Events
         /// </summary>
         public static IReadOnlyList<Type> PayloadTypes { get; } = FindPayloadTypes();
 
-        /// <summary>The export's key for a payload: <c>&lt;Direction&gt;.&lt;TypeName&gt;</c>.</summary>
-        public static string Key(Type payloadType)
-        {
-            var direction = payloadType.Namespace!.Substring(EventsNamespace.Length + 1).Split('.')[0];
-
-            return $"{direction}.{payloadType.Name}";
-        }
-
         /// <summary>
         ///     The <c>schema</c> user-property value of a payload: its <see cref="SchemaAttribute" /> value, or the type
         ///     name where it has none (the <c>readonly record struct</c> payloads cannot carry the attribute).
@@ -66,12 +58,14 @@ namespace Vion.Contracts.Test.Events
         }
 
         /// <summary>
-        ///     The <c>$defs</c> key of a named type: its namespace relative to <c>Vion.Contracts.Events</c> plus its type
-        ///     name, declaring types first (<c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>). A type outside
-        ///     <c>Vion.Contracts.Events</c> is keyed by its full namespace instead
-        ///     (<c>Microsoft.Extensions.Logging.LogLevel</c>), whose first segment is never a direction name.
+        ///     The export's key for a type, in <c>payloads</c> and in <c>$defs</c> alike: its namespace relative to
+        ///     <c>Vion.Contracts.Events</c>, sub-namespaces kept, plus its type name, declaring types first
+        ///     (<c>CloudToMesh.Automations.UpsertAutomationPayload</c>,
+        ///     <c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>). A type outside <c>Vion.Contracts.Events</c> is
+        ///     keyed by its full namespace instead (<c>Microsoft.Extensions.Logging.LogLevel</c>), whose first segment is
+        ///     never a direction name.
         /// </summary>
-        public static string DefinitionKey(Type type)
+        public static string Key(Type type)
         {
             if (type.IsGenericType)
             {
@@ -161,7 +155,7 @@ namespace Vion.Contracts.Test.Events
             var type = Nullable.GetUnderlyingType(context.TypeInfo.Type) ?? context.TypeInfo.Type;
             if (IsNamed(type))
             {
-                node[DefinitionTag] = DefinitionKey(type);
+                node[DefinitionTag] = Key(type);
             }
 
             return schema;

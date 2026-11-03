@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Vion.Contracts.Events;
+using Vion.Contracts.Events.CloudToMesh.Automations;
 using Vion.Contracts.Events.MeshToCloud;
 using Vion.Contracts.Hw.Di;
 
@@ -65,9 +66,19 @@ namespace Vion.Contracts.Test.Events
         }
 
         [TestMethod]
-        public void KeyAPayloadInANestedNamespaceByItsDirection()
+        public void KeyPayloadsAndDefinitionsByOneRule()
         {
-            Assert.IsTrue(Payloads().ContainsKey("CloudToMesh.UpsertAutomationPayload"));
+            // Both maps take their keys from EventsSchemaExporter.Key, so a payload and a definition in the same namespace
+            // share its relative path, sub-namespaces kept.
+            var export = EventsSchemaExporter.Build();
+            var payloadKeys = export["payloads"]!.AsObject().Select(payload => payload.Key).ToList();
+
+            CollectionAssert.AreEqual(EventsSchemaExporter.PayloadTypes.Select(EventsSchemaExporter.Key).ToList(), payloadKeys);
+            Assert.AreEqual("CloudToMesh.Automations.UpsertAutomationPayload", EventsSchemaExporter.Key(typeof(UpsertAutomationPayload)));
+            Assert.AreEqual("CloudToMesh.Automations.AutomationsRetrievedPayload", EventsSchemaExporter.Key(typeof(AutomationsRetrievedPayload)));
+            Assert.AreEqual("CloudToMesh.Automations.Automation", EventsSchemaExporter.Key(typeof(Automation)));
+            Assert.IsTrue(payloadKeys.Contains(EventsSchemaExporter.Key(typeof(UpsertAutomationPayload))));
+            Assert.IsTrue(export["$defs"]!.AsObject().ContainsKey(EventsSchemaExporter.Key(typeof(Automation))));
         }
 
         [TestMethod]
@@ -116,8 +127,8 @@ namespace Vion.Contracts.Test.Events
         [TestMethod]
         public void KeyADefinitionByItsNamespaceUnderEventsAndItsDeclaringTypes()
         {
-            Assert.AreEqual("MeshToCloud.PropertyState", EventsSchemaExporter.DefinitionKey(typeof(PropertyState)));
-            Assert.AreEqual("MeshToCloud.AlarmStateChangedPayload.AlarmParameter", EventsSchemaExporter.DefinitionKey(typeof(AlarmStateChangedPayload.AlarmParameter)));
+            Assert.AreEqual("MeshToCloud.PropertyState", EventsSchemaExporter.Key(typeof(PropertyState)));
+            Assert.AreEqual("MeshToCloud.AlarmStateChangedPayload.AlarmParameter", EventsSchemaExporter.Key(typeof(AlarmStateChangedPayload.AlarmParameter)));
         }
 
         [TestMethod]
@@ -126,11 +137,11 @@ namespace Vion.Contracts.Test.Events
             var directions = EventsSchemaExporter.PayloadTypes.Select(type => EventsSchemaExporter.Key(type).Split('.')[0]).ToHashSet();
             var outside = new[] { typeof(LogLevel), typeof(DiStatePayload) };
 
-            Assert.AreEqual("Microsoft.Extensions.Logging.LogLevel", EventsSchemaExporter.DefinitionKey(typeof(LogLevel)));
-            Assert.AreEqual("Vion.Contracts.Hw.Di.DiStatePayload", EventsSchemaExporter.DefinitionKey(typeof(DiStatePayload)));
+            Assert.AreEqual("Microsoft.Extensions.Logging.LogLevel", EventsSchemaExporter.Key(typeof(LogLevel)));
+            Assert.AreEqual("Vion.Contracts.Hw.Di.DiStatePayload", EventsSchemaExporter.Key(typeof(DiStatePayload)));
             foreach (var type in outside)
             {
-                Assert.DoesNotContain(EventsSchemaExporter.DefinitionKey(type).Split('.')[0], directions, type.FullName);
+                Assert.DoesNotContain(EventsSchemaExporter.Key(type).Split('.')[0], directions, type.FullName);
             }
         }
 

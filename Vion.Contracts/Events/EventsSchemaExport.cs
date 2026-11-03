@@ -7,10 +7,19 @@ namespace Vion.Contracts.Events
     ///     The committed JSON Schema export of every <c>Events/*</c> payload, embedded in this assembly.
     ///     <para>
     ///         The export is one JSON object with two members, <c>$defs</c> and <c>payloads</c>. <c>payloads</c> maps a key
-    ///         per payload to an entry holding <c>schema</c> and <c>jsonSchema</c>. The key is
-    ///         <c>&lt;Direction&gt;.&lt;TypeName&gt;</c> — the
-    ///         namespace segment under <c>Vion.Contracts.Events</c> and the type name, because two pairs of payloads share a
-    ///         type name across directions with different shapes. <c>schema</c> is the value the MQTT <c>schema</c>
+    ///         per payload to an entry holding <c>schema</c> and <c>jsonSchema</c>.
+    ///     </para>
+    ///     <para>
+    ///         Both maps are keyed by one rule: the type's namespace relative to <c>Vion.Contracts.Events</c>,
+    ///         sub-namespaces kept, plus its type name, declaring types first —
+    ///         <c>CloudToMesh.Automations.UpsertAutomationPayload</c>,
+    ///         <c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>. A type outside <c>Vion.Contracts.Events</c> is
+    ///         keyed by its full name (<c>Microsoft.Extensions.Logging.LogLevel</c>), whose first segment is never a
+    ///         direction. The namespace is in the key because two pairs of payloads share a type name across directions
+    ///         with different shapes.
+    ///     </para>
+    ///     <para>
+    ///         <c>schema</c> is the value the MQTT <c>schema</c>
     ///         user-property carries for that payload — the <see cref="SchemaAttribute" /> value where there is one,
     ///         otherwise the type name.
     ///         <c>jsonSchema</c> is what <c>System.Text.Json.Schema.JsonSchemaExporter</c> writes for the payload over
@@ -19,10 +28,8 @@ namespace Vion.Contracts.Events
     ///     </para>
     ///     <para>
     ///         Every record, struct and enum a payload nests is defined once under <c>$defs</c> and referenced as
-    ///         <c>#/$defs/&lt;key&gt;</c>, from a payload or from another definition; no other <c>$ref</c> occurs. The key
-    ///         is the type's namespace relative to <c>Vion.Contracts.Events</c> plus its name, declaring types first
-    ///         (<c>MeshToCloud.AlarmStateChangedPayload.AlarmParameter</c>); a type outside <c>Vion.Contracts.Events</c> is
-    ///         keyed by its full name (<c>Microsoft.Extensions.Logging.LogLevel</c>). A definition never allows
+    ///         <c>#/$defs/&lt;key&gt;</c>, from a payload or from another definition; no other <c>$ref</c> occurs. A
+    ///         definition never allows
     ///         <c>null</c>; a use that does is <c>{"anyOf": [{"$ref": …}, {"type": "null"}]}</c>. Collections and
     ///         dictionaries stay inline. A value typed <c>JsonNode</c> or <c>object</c> is the free-form schema
     ///         <c>true</c>.
