@@ -13,14 +13,16 @@ namespace Vion.Contracts.Conventions
     {
         /// <summary>
         ///     The <c>Vion.Dale.Sdk</c> version dale hosts. Lives in dale's
-        ///     <c>ServiceProviderDeclarationPayload.Annotations</c>. Format <c>MAJOR.MINOR.PATCH</c>.
+        ///     <c>ServiceProviderDeclarationPayload.Annotations</c>; present only when dale's host SDK version is
+        ///     known (omitted when it is <c>0.0.0</c>). Format <c>MAJOR.MINOR.PATCH</c>.
         /// </summary>
         public const string DaleSdkVersionAnnotationKey = "DaleSdkVersion";
 
         /// <summary>
         ///     The highest <c>Vion.Dale.Sdk</c> reference across a library's dlls. Lives in
-        ///     <see cref="Vion.Contracts.Introspection.DalePluginInfo.Annotations" />; always present.
-        ///     Format <c>MAJOR.MINOR.PATCH</c>.
+        ///     <see cref="Vion.Contracts.Introspection.DalePluginInfo.Annotations" />; present when the
+        ///     target version is known (omitted when no dll references <c>Vion.Dale.Sdk</c>, or the version is
+        ///     <c>0.0.0</c>). Format <c>MAJOR.MINOR.PATCH</c>.
         /// </summary>
         public const string TargetDaleSdkVersionAnnotationKey = "TargetDaleSdkVersion";
 
