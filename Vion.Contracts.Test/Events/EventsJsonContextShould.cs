@@ -23,7 +23,8 @@ namespace Vion.Contracts.Test.Events
     public class EventsJsonContextShould
     {
         // Every JsonStringEnumConverter<T> registered across mesh's contexts (18 enums), plus AccessType, which no mesh
-        // context converts because nothing produces or reads BridgingDeclarationPayload as JSON yet.
+        // context converts yet: mesh's BridgingJsonContext converts it from the mesh release that reads
+        // BridgingDeclarationPayload.
         private static readonly Type[] StringEnums =
         [
             typeof(ActionType),
@@ -98,8 +99,9 @@ namespace Vion.Contracts.Test.Events
                             JsonSerializer.Serialize(new LogicConfigurationLoadFailedPayload(LogicConfigurationLoadFailureReason.MissingConfig),
                                                      EventsJsonContext.Default.LogicConfigurationLoadFailedPayload));
             Assert.AreEqual("{\"logLevel\":\"Warning\"}", JsonSerializer.Serialize(new SetLogLevelPayload(LogLevel.Warning), EventsJsonContext.Default.SetLogLevelPayload));
-            Assert.AreEqual("{\"declarations\":[{\"topicFilter\":\"tenant/installation-b/#\",\"access\":\"Publish\"}]}",
-                            JsonSerializer.Serialize(new BridgingDeclarationPayload([new TopicDeclaration("tenant/installation-b/#", AccessType.Publish)]),
+            const string topic = "v1/test/5b1d0c9e-3a47-4f2b-8e6d-0c2a9f4b7d11/c84f2a60-9d1e-4b37-a5f2-6e3b8d0c1a92/dale/block-1/wind/remote/interface/send";
+            Assert.AreEqual($"{{\"declarations\":[{{\"topicFilter\":\"{topic}\",\"access\":\"Publish\"}}]}}",
+                            JsonSerializer.Serialize(new BridgingDeclarationPayload([new TopicDeclaration(topic, AccessType.Publish)]),
                                                      EventsJsonContext.Default.BridgingDeclarationPayload));
         }
 
