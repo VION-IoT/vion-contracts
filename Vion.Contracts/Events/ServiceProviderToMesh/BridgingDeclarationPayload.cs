@@ -12,8 +12,10 @@ namespace Vion.Contracts.Events.ServiceProviderToMesh
     ///     Topics of another installation a service provider needs bridged.
     /// </summary>
     /// <param name="TopicFilter">
-    ///     For <see cref="AccessType.Publish" />, the filter is one exact topic under another gateway's installation
-    ///     topic, without wildcards. What the provider publishes on that topic is forwarded to that gateway.
+    ///     For <see cref="AccessType.Publish" />, the filter is one exact topic: another gateway's installation topic,
+    ///     written exactly as that gateway's installation topic is, with its GUIDs in lower case with hyphens, followed by
+    ///     the declaring service provider's identifier. It holds no wildcard, no empty level, no whitespace and no control
+    ///     character. What the provider publishes on that topic is forwarded to that gateway.
     /// </param>
     /// <param name="Access">What the service provider does on the topics <paramref name="TopicFilter" /> covers.</param>
     public readonly record struct TopicDeclaration(string TopicFilter, AccessType Access);
